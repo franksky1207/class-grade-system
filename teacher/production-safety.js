@@ -10,6 +10,7 @@
   };
   let draftDirty = false;
   let pendingSnapshot = null;
+  let syncAttemptActive = false;
 
   function localYmd(d = new Date()) {
     const y = d.getFullYear();
@@ -18,9 +19,7 @@
     return `${y}-${m}-${day}`;
   }
 
-  function deepClone(v) {
-    try { return JSON.parse(JSON.stringify(v)); } catch (_) { return null; }
-  }
+  function deepClone(v) { try { return JSON.parse(JSON.stringify(v)); } catch (_) { return null; } }
 
   function savePending(c) {
     if (!c) return;
@@ -30,10 +29,7 @@
 
   function loadPending() {
     if (pendingSnapshot) return pendingSnapshot;
-    try {
-      const raw = sessionStorage.getItem(PENDING_KEY);
-      if (raw) pendingSnapshot = JSON.parse(raw);
-    } catch (_) {}
+    try { const raw = sessionStorage.getItem(PENDING_KEY); if (raw) pendingSnapshot = JSON.parse(raw); } catch (_) {}
     return pendingSnapshot;
   }
 
@@ -69,15 +65,10 @@
 
   function installDraftGuard() {
     try { draftDirty = sessionStorage.getItem(DRAFT_KEY) === '1'; } catch (_) {}
-
-    document.addEventListener('input', (e) => {
-      if (e.target?.closest?.('#entry')) markDraft(true);
-    }, true);
-
+    document.addEventListener('input', (e) => { if (e.target?.closest?.('#entry')) markDraft(true); }, true);
     document.addEventListener('click', (e) => {
       const b = e.target?.closest?.('button');
       if (!b) return;
-
       if (b.id === 'saveManualExam' || b.id === 'saveExcelExams') {
         setTimeout(() => {
           const entryStillActive = document.getElementById('entry')?.classList.contains('active');
@@ -85,21 +76,14 @@
         }, 50);
         return;
       }
-
       const navigating = !!b.dataset?.page || ['backFromEntry','backFromOverview','backFromRecords','backFromStudents','backFromSettings'].includes(b.id);
-      if (navigating && draftDirty) {
-        if (!confirm('目前有尚未儲存的成績輸入，確定要離開嗎？')) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-        }
+      if (navigating && draftDirty && !confirm('目前有尚未儲存的成績輸入，確定要離開嗎？')) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       }
     }, true);
-
     window.addEventListener('beforeunload', (e) => {
       if (!hasUnsaved()) return;
-      e.preventDefault();
-      e.returnValue = '';
+      e.preventDefault(); e.returnValue = '';
     });
   }
 
@@ -115,9 +99,7 @@
       if (!date || !subject || !name) return;
       const exists = (c.exams || []).some(x => String(x.date||'')===date && String(x.subject||'').trim()===subject && String(x.name||'').trim()===name);
       if (!exists) return;
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       alert('這次考試已經存在。請到「考試紀錄」編輯原本的考試。');
     }, true);
   }
@@ -133,24 +115,16 @@
         }
         if(app.lowRange==='all') return exams.filter(e=>e.scores.some(s=>s.seat===st.seat && String(s.value).trim()!=='' && Number.isFinite(Number(s.value))));
         let start='', end=localYmd();
-        if(app.lowRange==='d14'){
-          const d=new Date(); d.setDate(d.getDate()-13); start=localYmd(d);
-        }else{
-          if(!app.lowStart || !app.lowEnd) return [];
-          start=app.lowStart; end=app.lowEnd;
-        }
+        if(app.lowRange==='d14'){ const d=new Date(); d.setDate(d.getDate()-13); start=localYmd(d); }
+        else { if(!app.lowStart || !app.lowEnd) return []; start=app.lowStart; end=app.lowEnd; }
         return exams.filter(e=>(!start||e.date>=start)&&(!end||e.date<=end));
       };
     }
-
     if (typeof window.renderOverview === 'function' && !window.renderOverview._localDateWrapped) {
       const original = window.renderOverview;
       const wrapped = function(...args) {
         const nativeIso = Date.prototype.toISOString;
-        Date.prototype.toISOString = function() {
-          const ymd = localYmd(this);
-          return `${ymd}T00:00:00.000Z`;
-        };
+        Date.prototype.toISOString = function() { return `${localYmd(this)}T00:00:00.000Z`; };
         try { return original.apply(this,args); }
         finally { Date.prototype.toISOString = nativeIso; }
       };
@@ -164,17 +138,12 @@
     const status = document.getElementById('saveStatus');
     if (!status?.parentElement) return;
     const btn = document.createElement('button');
-    btn.id = 'googleRetryPanel';
-    btn.className = 'btn danger';
-    btn.textContent = '重新儲存';
-    btn.style.padding = '6px 10px';
+    btn.id = 'googleRetryPanel'; btn.className = 'btn danger'; btn.textContent = '重新儲存'; btn.style.padding = '6px 10px';
     btn.onclick = retryPendingSync;
     status.parentElement.insertBefore(btn, status.nextSibling);
   }
 
-  function removeRetryPanel() {
-    document.getElementById('googleRetryPanel')?.remove();
-  }
+  function removeRetryPanel() { document.getElementById('googleRetryPanel')?.remove(); }
 
   async function loadScript(src, ready) {
     if (ready()) return;
@@ -194,6 +163,7 @@
       if (typeof show === 'function') show('login');
       return;
     }
+    syncAttemptActive = true;
     const btn=document.getElementById('googleRetryPanel');
     if(btn){btn.disabled=true;btn.textContent='重新儲存中…';}
     const status=document.getElementById('saveStatus'); if(status) status.textContent='儲存中…';
@@ -205,11 +175,12 @@
       await loadScript('teacher/google-exam-sync.js',()=>!!window.GoogleExamSync);
       await window.GoogleStudentSync.syncStudents(c);
       await window.GoogleExamSync.syncExamsAndGrades(c);
-      clearPending();
+      clearPending(); syncAttemptActive = false;
       if (typeof save==='function') save();
       if(status) status.textContent='✓ 已儲存';
       if(typeof toast==='function') toast('✓ 已重新同步到 Google');
     } catch (err) {
+      syncAttemptActive = false;
       if(status) status.textContent='⚠ 儲存失敗';
       ensureRetryPanel();
       alert(err?.message || '重新儲存失敗，請稍後再試。');
@@ -223,18 +194,16 @@
     document.addEventListener('click', e => {
       const b=e.target?.closest?.('button');
       if(!b || !mutatingIds.has(b.id)) return;
-      setTimeout(()=>{
-        const c=typeof currentClass==='function'?currentClass():null;
-        if(c) savePending(c);
-      },0);
+      syncAttemptActive = true;
+      setTimeout(()=>{ const c=typeof currentClass==='function'?currentClass():null; if(c) savePending(c); },0);
     },true);
 
     const status=document.getElementById('saveStatus');
     if(status){
       new MutationObserver(()=>{
         const t=status.textContent||'';
-        if(t.includes('儲存失敗')) ensureRetryPanel();
-        else if(t.includes('✓ 已儲存')) clearPending();
+        if(t.includes('儲存失敗')) { syncAttemptActive=false; ensureRetryPanel(); }
+        else if(t.includes('✓ 已儲存') && syncAttemptActive) { syncAttemptActive=false; clearPending(); }
       }).observe(status,{childList:true,characterData:true,subtree:true});
     }
     if(loadPending()) ensureRetryPanel();
@@ -265,9 +234,7 @@
           const head=(data.values?.[0]||[]).slice(0,expected.length).map(x=>String(x).trim());
           if(expected.every((x,i)=>head[i]===x)) matches.push(p);
         }
-        if(matches.length!==1){
-          throw new Error(`班級資料需要修復：找不到「${required}」工作表。若曾重新命名，請改回原名稱後再登入。`);
-        }
+        if(matches.length!==1) throw new Error(`班級資料需要修復：找不到「${required}」工作表。若曾重新命名，請改回原名稱後再登入。`);
         const candidate=matches[0];
         const rr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}:batchUpdate`,{
           method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
@@ -284,23 +251,12 @@
     function wrap(store){
       if(!store || store.__productionSafetyWrapped) return store;
       const original=store.loadAllClassesFromGoogle;
-      if(typeof original==='function'){
-        store.loadAllClassesFromGoogle=async function(indexId){
-          await preflightClassSheets(store,indexId);
-          return original.call(store,indexId);
-        };
-      }
+      if(typeof original==='function') store.loadAllClassesFromGoogle=async function(indexId){ await preflightClassSheets(store,indexId); return original.call(store,indexId); };
       store.__productionSafetyWrapped=true;
       return store;
     }
     if(existing) { wrap(existing); return; }
-    try {
-      Object.defineProperty(window,'GoogleDriveStore',{
-        configurable:true,
-        get(){return existing;},
-        set(v){existing=wrap(v);}
-      });
-    } catch (_) {}
+    try { Object.defineProperty(window,'GoogleDriveStore',{ configurable:true, get(){return existing;}, set(v){existing=wrap(v);} }); } catch (_) {}
   }
 
   installLoginHeaderGuard();
