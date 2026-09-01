@@ -22,6 +22,12 @@
     if (box) box.remove();
   }
 
+  function applyProductionLabels() {
+    document.title = '班級成績管理系統';
+    const headerMode = document.querySelector('header .brand + .small');
+    if (headerMode) headerMode.textContent = '教師端';
+  }
+
   function loadDriveStoreScript() {
     if (window.GoogleDriveStore) return Promise.resolve();
     if (driveStoreReadyPromise) return driveStoreReadyPromise;
@@ -68,12 +74,10 @@
       console.info(
         indexInfo.createdNow
           ? '已建立老師專屬班級索引試算表。'
-          : '已找到老師專屬班級索引試算表。',
+          : '已找到並確認老師專屬班級索引試算表。',
         indexInfo
       );
 
-      // Keep v17's existing class/grade flow intact for now.
-      // Only the login identity + Drive index bootstrap are formalized in this stage.
       app.logged = true;
       save();
       if (!app.classes.length) show('firstSetup');
@@ -90,12 +94,12 @@
   }
 
   function install() {
+    applyProductionLabels();
+
     const btn = document.getElementById('loginBtn');
     if (!btn || !window.GoogleAuth) return;
 
     // v17 used a localStorage flag as a simulated login. Do not trust that flag anymore.
-    // OAuth access tokens are intentionally kept only in memory at this stage, so every
-    // fresh page load must pass through Google sign-in before Drive/Sheets can be used.
     if (typeof app !== 'undefined') {
       app.logged = false;
       save();
