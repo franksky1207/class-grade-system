@@ -42,8 +42,7 @@
   async function writeRange(fileId, range, values) {
     const encoded = encodeURIComponent(range);
     await authFetch(`${SHEETS_API}/${encodeURIComponent(fileId)}/values/${encoded}?valueInputOption=RAW`, {
-      method:'PUT',
-      body:JSON.stringify({ range, majorDimension:'ROWS', values })
+      method:'PUT', body:JSON.stringify({ range, majorDimension:'ROWS', values })
     });
   }
 
@@ -92,17 +91,13 @@
     const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!A:G`);
     const now = new Date().toISOString();
     await authFetch(`${SHEETS_API}/${encodeURIComponent(indexId)}/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
-      method:'POST',
-      body:JSON.stringify({ values:[[c.name,c.year,String(c.term),spreadsheetId,String(!!c.archived),now,now]] })
+      method:'POST', body:JSON.stringify({ values:[[c.name,c.year,String(c.term),spreadsheetId,String(!!c.archived),now,now]] })
     });
   }
 
   async function createClassSpreadsheet(c) {
     const title = `${c.name}-${c.year}-${c.term}`;
-    const payload = {
-      properties:{ title },
-      sheets:CLASS_SHEETS.map(name=>({ properties:{ title:name, gridProperties:{ frozenRowCount:1 } } }))
-    };
+    const payload = { properties:{ title }, sheets:CLASS_SHEETS.map(name=>({ properties:{ title:name, gridProperties:{ frozenRowCount:1 } } })) };
     const file = await (await authFetch(SHEETS_API, { method:'POST', body:JSON.stringify(payload) })).json();
     const id = file.spreadsheetId;
     if (!id) throw new Error('班級試算表建立失敗。');
@@ -112,13 +107,7 @@
       body:JSON.stringify({ appProperties:{ classGradeSystemType:'class-data', schemaVersion:'1', className:String(c.name||''), schoolYear:String(c.year||''), term:String(c.term||'') } })
     });
 
-    const classSettingRows = [
-      ['欄位','內容'],
-      ['班級名稱',String(c.name||'')],
-      ['學年度',String(c.year||'')],
-      ['學期',String(c.term||'')],
-      ['archived',String(!!c.archived)]
-    ];
+    const classSettingRows = [['欄位','內容'],['班級名稱',String(c.name||'')],['學年度',String(c.year||'')],['學期',String(c.term||'')],['archived',String(!!c.archived)]];
     const studentRows = [['座號','姓名','學號','身分證後4碼'], ...(c.students||[]).map(s=>[String(s.seat||''),String(s.name||''),String(s.account||''),String(s.pass||'')])];
     const examRows = [['日期','科目','考試名稱'], ...(c.exams||[]).map(e=>[String(e.date||''),String(e.subject||''),String(e.name||'')])];
     const gradeRows = [['日期','科目','考試名稱','座號','姓名','成績']];
@@ -140,15 +129,10 @@
     const index = window.classGradeSystemIndex || await ensureTeacherIndex();
     const rows = await readIndexRows(index.id);
     let changed = false;
-
     for (const c of (classes || [])) {
       if (c.spreadsheetId) continue;
       const hit = rows.find(r=>text(r[0])===text(c.name) && text(r[1])===text(c.year) && text(r[2])===text(c.term));
-      if (hit?.[3]) {
-        c.spreadsheetId = hit[3];
-        changed = true;
-        continue;
-      }
+      if (hit?.[3]) { c.spreadsheetId = hit[3]; changed = true; continue; }
       const spreadsheetId = await createClassSpreadsheet(c);
       await appendIndexRow(index.id, c, spreadsheetId);
       c.spreadsheetId = spreadsheetId;
@@ -158,9 +142,43 @@
     return { changed };
   }
 
-  async function getSheetTitles(spreadsheetId) {
-    const data = await (await authFetch(`${SHEETS_API}/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties.title`)).json();
-    return (data.sheets || []).map(s=>s?.properties?.title).filter(Boolean);
+  async function getSheetProperties(spreadsheetId) {
+    const data = await (await authFetch(`${SHEETS_API}/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties`)).json();
+    return (data.sheets || []).map(s=>s?.properties).filter(Boolean);
+  }
+
+  async function ensureClassSchema(spreadsheetId, indexRow) {
+    try {
+      let props = await getSheetProperties(spreadsheetId);
+      const existing = new Map(props.map(p=>[p.title,p]));
+      const requests = [];
+      for (const name of CLASS_SHEETS) {
+        if (!existing.has(name)) requests.push({ addSheet:{ properties:{ title:name, gridProperties:{ frozenRowCount:1 } } } });
+      }
+      for (const name of CLASS_SHEETS) {
+        const p = existing.get(name);
+        if (p && p.gridProperties?.frozenRowCount !== 1) {
+          requests.push({ updateSheetProperties:{ properties:{ sheetId:p.sheetId, gridProperties:{ frozenRowCount:1 } }, fields:'gridProperties.frozenRowCount' } });
+        }
+      }
+      if (requests.length) {
+        await authFetch(`${SHEETS_API}/${encodeURIComponent(spreadsheetId)}:batchUpdate`, { method:'POST', body:JSON.stringify({requests}) });
+      }
+
+      const headerData = [
+        { range:"'班級設定'!A1:B1", values:[['欄位','內容']] },
+        { range:"'學生資料'!A1:D1", values:[['座號','姓名','學號','身分證後4碼']] },
+        { range:"'考試資料'!A1:C1", values:[['日期','科目','考試名稱']] },
+        { range:"'成績資料'!A1:F1", values:[['日期','科目','考試名稱','座號','姓名','成績']] }
+      ];
+      await authFetch(`${SHEETS_API}/${encodeURIComponent(spreadsheetId)}/values:batchUpdate`, {
+        method:'POST', body:JSON.stringify({ valueInputOption:'RAW', data:headerData })
+      });
+
+      return { repaired: requests.length > 0 };
+    } catch (err) {
+      throw new Error(`班級資料需要修復：${err?.message || 'Google Sheet 結構無法自動修復。'}`);
+    }
   }
 
   async function batchReadClassRanges(spreadsheetId) {
@@ -172,37 +190,24 @@
     params.set('majorDimension','ROWS');
     const data = await (await authFetch(`${SHEETS_API}/${encodeURIComponent(spreadsheetId)}/values:batchGet?${params.toString()}`)).json();
     const ranges = Array.isArray(data.valueRanges) ? data.valueRanges : [];
-    return {
-      settings:ranges[0]?.values || [],
-      students:ranges[1]?.values || [],
-      exams:ranges[2]?.values || [],
-      grades:ranges[3]?.values || []
-    };
+    return { settings:ranges[0]?.values || [], students:ranges[1]?.values || [], exams:ranges[2]?.values || [], grades:ranges[3]?.values || [] };
   }
 
   function parseSettings(rows) {
     const out = {};
-    for (const row of rows.slice(1)) {
-      const key = text(row[0]);
-      if (key) out[key] = text(row[1]);
-    }
+    for (const row of rows.slice(1)) { const key = text(row[0]); if (key) out[key] = text(row[1]); }
     return out;
   }
 
   function parseStudents(rows) {
-    return rows.slice(1).map(r=>({
-      seat:text(r[0]),
-      name:text(r[1]),
-      account:text(r[2]),
-      pass:text(r[3])
-    })).filter(s=>s.seat || s.name || s.account || s.pass).sort((a,b)=>Number(a.seat)-Number(b.seat));
+    return rows.slice(1).map(r=>({ seat:text(r[0]), name:text(r[1]), account:text(r[2]), pass:text(r[3]) }))
+      .filter(s=>s.seat || s.name || s.account || s.pass)
+      .sort((a,b)=>Number(a.seat)-Number(b.seat));
   }
 
   function parseExams(examRows, gradeRows, studentCount) {
     let repairNeeded = false;
     const gradeGroups = new Map();
-
-    // 成績資料只能附著在考試資料中的既有考試；同一場考試、同一座號只保留最後一筆。
     for (const r of gradeRows.slice(1)) {
       const date=text(r[0]), subject=text(r[1]), name=text(r[2]);
       if (!date && !subject && !name) continue;
@@ -216,45 +221,32 @@
 
     const exams = [];
     const seen = new Set();
-
     for (const r of examRows.slice(1)) {
       const date=text(r[0]), subject=text(r[1]), name=text(r[2]);
       if (!date && !subject && !name) continue;
       const key=examKey(date,subject,name);
-      if (seen.has(key)) {
-        repairNeeded = true;
-        continue;
-      }
+      if (seen.has(key)) { repairNeeded = true; continue; }
       seen.add(key);
-
       const bySeat = gradeGroups.get(key);
       const scores = bySeat ? [...bySeat.values()] : [];
-
-      // 班級已有學生時，完全沒有任何成績列的考試視為殘留空殼。
-      if (studentCount > 0 && !scores.length) {
-        repairNeeded = true;
-        gradeGroups.delete(key);
-        continue;
-      }
-
+      if (studentCount > 0 && !scores.length) { repairNeeded = true; gradeGroups.delete(key); continue; }
       exams.push({ date, subject, name, scores });
       gradeGroups.delete(key);
     }
-
-    // 剩下的成績群組代表考試已不存在的孤兒成績，絕對不能把考試復活。
     if (gradeGroups.size) repairNeeded = true;
-
     return { exams, repairNeeded };
+  }
+
+  async function repairClassSettings(spreadsheetId, c) {
+    const rows = [['欄位','內容'],['班級名稱',String(c.name||'')],['學年度',String(c.year||'')],['學期',String(c.term||'')],['archived',String(!!c.archived)]];
+    await writeRange(spreadsheetId, "'班級設定'!A1:B5", rows);
   }
 
   async function readClassSpreadsheet(indexRow) {
     const spreadsheetId = text(indexRow[3]);
     if (!spreadsheetId) throw new Error('班級索引中有資料缺少 Spreadsheet ID。');
 
-    const titles = await getSheetTitles(spreadsheetId);
-    const missing = CLASS_SHEETS.filter(name=>!titles.includes(name));
-    if (missing.length) throw new Error(`班級資料需要修復：缺少「${missing.join('、')}」工作表。`);
-
+    const schema = await ensureClassSchema(spreadsheetId, indexRow);
     const data = await batchReadClassRanges(spreadsheetId);
     const settings = parseSettings(data.settings);
     const name = settings['班級名稱'] || text(indexRow[0]);
@@ -263,18 +255,16 @@
     const archived = indexRow[4] !== undefined && text(indexRow[4]) !== '' ? truthy(indexRow[4]) : truthy(settings.archived);
     const students = parseStudents(data.students);
     const parsedExams = parseExams(data.exams,data.grades,students.length);
-
-    return {
-      id:classIdFromSpreadsheetId(spreadsheetId),
-      name,
-      year,
-      term,
-      archived,
-      spreadsheetId,
-      students,
-      exams:parsedExams.exams,
+    const c = {
+      id:classIdFromSpreadsheetId(spreadsheetId), name, year, term, archived, spreadsheetId,
+      students, exams:parsedExams.exams,
       _googleNeedsExamRepair:parsedExams.repairNeeded
     };
+
+    const settingKeys = ['班級名稱','學年度','學期','archived'];
+    const settingsNeedRepair = schema.repaired || settingKeys.some(k=>!Object.prototype.hasOwnProperty.call(settings,k));
+    if (settingsNeedRepair) await repairClassSettings(spreadsheetId, c);
+    return c;
   }
 
   async function loadAllClassesFromGoogle() {
@@ -293,6 +283,7 @@
     readIndexRows,
     readClassSpreadsheet,
     loadAllClassesFromGoogle,
+    ensureClassSchema,
     indexFileName:INDEX_FILE_NAME,
     indexSheetName:INDEX_SHEET_NAME
   };
