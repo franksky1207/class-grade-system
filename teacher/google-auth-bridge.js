@@ -31,7 +31,6 @@
   function loadDriveStoreScript() {
     if (window.GoogleDriveStore) return Promise.resolve();
     if (driveStoreReadyPromise) return driveStoreReadyPromise;
-
     driveStoreReadyPromise = new Promise((resolve, reject) => {
       const existing = document.querySelector('script[data-google-drive-store]');
       if (existing) {
@@ -39,29 +38,21 @@
         existing.addEventListener('error', reject, { once: true });
         return;
       }
-
       const script = document.createElement('script');
       script.src = 'teacher/google-drive-store.js';
       script.async = true;
       script.dataset.googleDriveStore = '1';
-      script.onload = () => {
-        if (window.GoogleDriveStore) resolve();
-        else reject(new Error('Google Drive 資料模組載入失敗。'));
-      };
+      script.onload = () => window.GoogleDriveStore ? resolve() : reject(new Error('Google Drive 資料模組載入失敗。'));
       script.onerror = () => reject(new Error('Google Drive 資料模組載入失敗。'));
       document.head.appendChild(script);
     });
-
     return driveStoreReadyPromise;
   }
 
   async function handleGoogleLogin() {
     const btn = document.getElementById('loginBtn');
     const oldText = btn?.textContent || '';
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = '正在連線 Google…';
-    }
+    if (btn) { btn.disabled = true; btn.textContent = '正在連線 Google…'; }
     clearLoginError();
 
     try {
@@ -71,35 +62,30 @@
       if (btn) btn.textContent = '正在準備 Google Drive…';
       await loadDriveStoreScript();
       const indexInfo = await window.GoogleDriveStore.ensureTeacherIndex();
-      console.info(
-        indexInfo.createdNow
-          ? '已建立老師專屬班級索引試算表。'
-          : '已找到並確認老師專屬班級索引試算表。',
-        indexInfo
-      );
 
+      if (app.classes?.length) {
+        if (btn) btn.textContent = '正在建立班級資料…';
+        const migration = await window.GoogleDriveStore.ensureLocalClasses(app.classes);
+        if (migration.changed) save();
+      }
+
+      console.info('Google Drive / Sheets 初始化完成。', indexInfo);
       app.logged = true;
       save();
-      if (!app.classes.length) show('firstSetup');
-      else show('dash');
+      if (!app.classes.length) show('firstSetup'); else show('dash');
     } catch (err) {
       console.error(err);
       showLoginError(`Google 資料初始化失敗：${err?.message || '請稍後再試。'}`);
     } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = oldText || '使用 Google 帳號登入';
-      }
+      if (btn) { btn.disabled = false; btn.textContent = oldText || '使用 Google 帳號登入'; }
     }
   }
 
   function install() {
     applyProductionLabels();
-
     const btn = document.getElementById('loginBtn');
     if (!btn || !window.GoogleAuth) return;
 
-    // v17 used a localStorage flag as a simulated login. Do not trust that flag anymore.
     if (typeof app !== 'undefined') {
       app.logged = false;
       save();
@@ -117,9 +103,6 @@
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', install, { once: true });
-  } else {
-    install();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once:true });
+  else install();
 })();
