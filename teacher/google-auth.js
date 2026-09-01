@@ -1,7 +1,7 @@
 // Google OAuth helper for teacher site
 // Public OAuth Client ID only. Never place a client secret in frontend code.
 (function () {
-  const CLIENT_ID = 'it78nmndnfqg9opfbik0vv37i1iepe4d.apps.googleusercontent.com';
+  const CLIENT_ID = '869980313279-it78nmndnfqg9opfbik0vv37i1iepe4d.apps.googleusercontent.com';
   const SCOPES = [
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
