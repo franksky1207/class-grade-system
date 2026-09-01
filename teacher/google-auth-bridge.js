@@ -9,6 +9,8 @@
   let examSyncDirty = false;
   let latestExamSyncClass = null;
   let pendingPermanentDeleteClassId = null;
+  let pendingArchiveClassId = null;
+  let viewedArchivedClassId = null;
 
   function showLoginError(message) {
     const login = document.getElementById('login');
@@ -110,9 +112,7 @@
 
   function examFingerprint(c) {
     return JSON.stringify((c?.exams || []).map(e => [
-      e.date,
-      e.subject,
-      e.name,
+      e.date, e.subject, e.name,
       (e.scores || []).map(s => [s.seat, s.name, s.value])
     ]));
   }
@@ -129,15 +129,17 @@
     for (let i = c.exams.length - 1; i >= 0; i--) {
       const e = c.exams[i];
       const key = examKey(e);
-      if (seen.has(key)) {
-        removed++;
-        continue;
-      }
+      if (seen.has(key)) { removed++; continue; }
       seen.add(key);
       keptReversed.push(e);
     }
     if (removed) c.exams = keptReversed.reverse();
     return removed;
+  }
+
+  async function touchUpdatedAt(c) {
+    await loadClassLifecycleScript();
+    await window.GoogleClassLifecycle.touchClassUpdatedAt(c);
   }
 
   function queueStudentSync(c) {
@@ -147,6 +149,7 @@
         await loadDriveStoreScript();
         await loadStudentSyncScript();
         await window.GoogleStudentSync.syncStudents(c);
+        await touchUpdatedAt(c);
         setSaveStatus('✓ 已儲存');
       } catch (err) {
         console.error('學生資料寫入 Google Sheets 失敗：', err);
@@ -169,6 +172,7 @@
         if (!c) break;
         setSaveStatus('儲存中…');
         await window.GoogleExamSync.syncExamsAndGrades(c);
+        await touchUpdatedAt(c);
       }
       setSaveStatus('✓ 已儲存');
     } catch (err) {
@@ -195,6 +199,7 @@
     setSaveStatus('正在修復 Google 成績資料…');
     for (const c of repairs) {
       await window.GoogleExamSync.syncExamsAndGrades(c);
+      await touchUpdatedAt(c);
       delete c._googleNeedsExamRepair;
     }
     setSaveStatus('✓ 已儲存');
@@ -235,9 +240,7 @@
   }
 
   function installExamSaveBridge() {
-    const examActionIds = new Set([
-      'saveManualExam','saveExcelExams','saveExamEdit','confirmDeleteExam'
-    ]);
+    const examActionIds = new Set(['saveManualExam','saveExcelExams','saveExamEdit','confirmDeleteExam']);
     document.addEventListener('click', (event) => {
       const target = event.target?.closest?.('button');
       if (!target || !examActionIds.has(target.id)) return;
@@ -251,6 +254,95 @@
     }, true);
   }
 
+  function installClassCreateBridge() {
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('button');
+      if (!target || !['createFirstClass','saveNewClass'].includes(target.id)) return;
+      if (typeof app === 'undefined') return;
+      const beforeIds = new Set((app.classes || []).map(c => c.id));
+      const previousCurrentId = app.currentClassId;
+      setTimeout(async () => {
+        const created = (app.classes || []).find(c => !beforeIds.has(c.id));
+        if (!created) return;
+        setSaveStatus('儲存中…');
+        try {
+          await loadDriveStoreScript();
+          await loadClassLifecycleScript();
+          await window.GoogleClassLifecycle.createClass(created);
+          if (typeof save === 'function') save();
+          setSaveStatus('✓ 已儲存');
+        } catch (err) {
+          console.error('建立班級 Google 資料失敗：', err);
+          app.classes = app.classes.filter(c => c.id !== created.id);
+          app.currentClassId = app.classes.some(c => c.id === previousCurrentId) ? previousCurrentId : (app.classes[0]?.id || null);
+          if (typeof save === 'function') save();
+          setSaveStatus('⚠ 儲存失敗');
+          if (typeof toast === 'function') toast(`⚠ 班級建立失敗：${err?.message || 'Google 資料建立失敗'}`);
+          if (target.id === 'createFirstClass' || !app.currentClassId) show('firstSetup');
+          else show('settings');
+        }
+      }, 0);
+    }, true);
+  }
+
+  function syncArchivedState(c, archived, previousArchived) {
+    if (!c) return;
+    setSaveStatus('儲存中…');
+    (async () => {
+      try {
+        await loadDriveStoreScript();
+        await loadClassLifecycleScript();
+        await window.GoogleClassLifecycle.setArchived(c, archived);
+        setSaveStatus('✓ 已儲存');
+      } catch (err) {
+        console.error('班級封存狀態同步失敗：', err);
+        c.archived = previousArchived;
+        if (typeof save === 'function') save();
+        if (typeof renderSettings === 'function') renderSettings();
+        if (typeof updateHeader === 'function') updateHeader();
+        setSaveStatus('⚠ 儲存失敗');
+        if (typeof toast === 'function') toast(`⚠ 封存狀態同步失敗：${err?.message || '請稍後再試'}`);
+      }
+    })();
+  }
+
+  function installArchiveBridge() {
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('button');
+      if (!target) return;
+
+      if (target.dataset?.archive) {
+        pendingArchiveClassId = target.dataset.archive;
+        return;
+      }
+      if (target.dataset?.viewArch) {
+        viewedArchivedClassId = target.dataset.viewArch;
+        return;
+      }
+      if (target.id === 'confirmArchiveClass') {
+        const id = pendingArchiveClassId;
+        const c = app?.classes?.find(x => x.id === id);
+        if (!c) return;
+        const before = !!c.archived;
+        setTimeout(() => syncArchivedState(c, true, before), 0);
+        return;
+      }
+      if (target.dataset?.reactivate) {
+        const c = app?.classes?.find(x => x.id === target.dataset.reactivate);
+        if (!c) return;
+        const before = !!c.archived;
+        setTimeout(() => syncArchivedState(c, false, before), 0);
+        return;
+      }
+      if (target.id === 'reactivateFromView') {
+        const c = app?.classes?.find(x => x.id === viewedArchivedClassId);
+        if (!c) return;
+        const before = !!c.archived;
+        setTimeout(() => syncArchivedState(c, false, before), 0);
+      }
+    }, true);
+  }
+
   function installPermanentClassDeleteBridge() {
     document.addEventListener('click', (event) => {
       const target = event.target?.closest?.('button');
@@ -260,7 +352,6 @@
         pendingPermanentDeleteClassId = target.dataset.deleteClass;
         return;
       }
-
       if (target.id !== 'confirmDeleteClass') return;
       const id = pendingPermanentDeleteClassId;
       const c = (typeof app !== 'undefined') ? app.classes?.find(x => x.id === id) : null;
@@ -280,7 +371,6 @@
           await loadDriveStoreScript();
           await loadClassLifecycleScript();
           await window.GoogleClassLifecycle.permanentDeleteClass(c);
-
           app.classes = app.classes.filter(x => x.id !== id);
           if (app.currentClassId === id) {
             const next = (typeof activeClasses === 'function' ? activeClasses()[0] : null) || app.classes[0];
@@ -353,7 +443,10 @@
     installStudentSaveBridge();
     installExcelExamDedupBridge();
     installExamSaveBridge();
+    installClassCreateBridge();
+    installArchiveBridge();
     installPermanentClassDeleteBridge();
+
     const btn = document.getElementById('loginBtn');
     if (!btn || !window.GoogleAuth) return;
 
