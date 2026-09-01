@@ -1,0 +1,1261 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>班級成績管理系統｜測試版</title>
+<style>
+:root{
+  --bg:#f5f7fb; --card:#ffffff; --line:#e5e7eb; --text:#111827; --muted:#6b7280;
+  --primary:#2563eb; --primary-soft:#eff6ff; --danger:#dc2626; --shadow:0 6px 20px rgba(15,23,42,.06);
+  --radius:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+a{text-decoration:none;color:inherit}
+header{
+  position:sticky; top:0; z-index:30; background:rgba(255,255,255,.94); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+}
+.header-inner{max-width:1320px;margin:auto;padding:12px 18px;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.brand{font-weight:800}
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.container{max-width:1320px;margin:auto;padding:20px 18px 60px}
+.page{display:none}
+.page.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:18px}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tile{padding:18px;min-height:138px;display:flex;flex-direction:column;justify-content:space-between;transition:.18s}
+.tile:hover{transform:translateY(-2px);border-color:#c7d2fe}
+.icon{font-size:24px}
+.title{margin:0 0 4px;font-size:24px}
+.subtitle,.small{color:var(--muted);font-size:14px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;color:var(--text)}
+.btn:hover{background:#f9fafb}
+.btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn.danger{color:var(--danger);border-color:#fecaca;background:#fff}
+.btn.soft{background:var(--primary-soft);border-color:#bfdbfe;color:#1d4ed8}
+.btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.field{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px 12px;background:#fff}
+textarea.field{resize:vertical}
+label{font-size:14px;font-weight:600;color:#374151}
+label .field{margin-top:6px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.notice{background:#f8fafc;border:1px solid #dbeafe;border-radius:12px;padding:12px 14px;color:#374151;line-height:1.65}
+.notice b{color:#111827}
+details.help{border:1px solid var(--line);border-radius:12px;background:#fafafa;padding:10px 12px}
+details.help summary{cursor:pointer;font-weight:700}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{background:#f9fafb;font-size:13px;color:#4b5563}
+tr:last-child td{border-bottom:none}
+.scroll-y{max-height:330px;overflow:auto}
+.scroll-y thead th{position:sticky;top:0;z-index:4}
+.sticky-table thead th{position:sticky;top:0;z-index:4}
+.sticky-table th:nth-child(1),.sticky-table td:nth-child(1){position:sticky;left:0;z-index:3;background:#fff;min-width:70px}
+.sticky-table th:nth-child(2),.sticky-table td:nth-child(2){position:sticky;left:70px;z-index:3;background:#fff;min-width:120px}
+.sticky-table thead th:nth-child(1),.sticky-table thead th:nth-child(2){z-index:5;background:#f9fafb}
+.segment{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.segment button{border:0;border-right:1px solid var(--line);background:#fff;padding:9px 12px}
+.segment button:last-child{border-right:0}
+.segment button.active{background:var(--primary);color:#fff}
+.stats2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{padding:18px}
+.stat .num{font-size:30px;font-weight:800;margin-top:6px}
+.dashboard-mid{display:grid;grid-template-columns:2.2fr 1fr;gap:14px;margin-top:14px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.toolbar > *{min-width:150px}
+.badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:#f3f4f6;font-size:12px}
+.badge.low{background:#fef2f2;color:#991b1b}
+.badge.eq{background:#f3f4f6;color:#374151}
+.badge.high{background:#ecfdf5;color:#065f46}
+.drawer{position:fixed;top:0;right:-440px;width:min(420px,92vw);height:100vh;background:#fff;border-left:1px solid var(--line);z-index:60;transition:.22s;padding:20px;overflow:auto;box-shadow:-10px 0 30px rgba(15,23,42,.12)}
+.drawer.open{right:0}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.25);z-index:50;display:none}
+.overlay.open{display:block}
+.modal{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.32);padding:16px}
+.modal.open{display:flex}
+.modal-card{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:20px;box-shadow:0 20px 60px rgba(15,23,42,.25)}
+.toast{position:fixed;right:18px;bottom:18px;background:#111827;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transform:translateY(8px);transition:.2s;z-index:100}
+.toast.show{opacity:1;transform:none}
+.save-status{font-size:13px;color:var(--muted)}
+.class-switch{min-width:240px}
+.manage-row{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px}
+.danger-zone{border:1px solid #fecaca;background:#fffafa}
+@media(max-width:1000px){
+  .grid5{grid-template-columns:repeat(3,1fr)}
+  .dashboard-mid{grid-template-columns:1fr}
+}
+@media(max-width:767px){
+  .container{padding:14px 12px 40px}
+  .grid5,.grid3,.grid2,.stats2{grid-template-columns:1fr}
+  .tile{min-height:auto}
+  .header-inner{align-items:flex-start}
+  .top-actions{justify-content:flex-end}
+  .class-switch{min-width:0;max-width:180px}
+  .toolbar > *{min-width:100%}
+  .segment{width:100%;display:grid;grid-template-columns:repeat(2,1fr)}
+  .segment button{border-bottom:1px solid var(--line)}
+}
+
+.tile{position:relative;overflow:hidden}
+.tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:#dbeafe}
+.tile h3{margin:8px 0 6px}
+.tile .icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;font-size:22px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.tile.entry{background:linear-gradient(180deg,#eff6ff 0%,#ffffff 100%)}
+.tile.entry::before{background:#3b82f6}
+.tile.entry .icon{background:#dbeafe;color:#1d4ed8}
+.tile.overview{background:linear-gradient(180deg,#eefbf3 0%,#ffffff 100%)}
+.tile.overview::before{background:#10b981}
+.tile.overview .icon{background:#d1fae5;color:#047857}
+.tile.records{background:linear-gradient(180deg,#fffbeb 0%,#ffffff 100%)}
+.tile.records::before{background:#f59e0b}
+.tile.records .icon{background:#fef3c7;color:#b45309}
+.tile.students{background:linear-gradient(180deg,#f5f3ff 0%,#ffffff 100%)}
+.tile.students::before{background:#8b5cf6}
+.tile.students .icon{background:#ede9fe;color:#6d28d9}
+.tile.settings{background:linear-gradient(180deg,#fff1f2 0%,#ffffff 100%)}
+.tile.settings::before{background:#f43f5e}
+.tile.settings .icon{background:#ffe4e6;color:#be123c}
+.section-head{display:flex;align-items:center;gap:10px}
+.section-badge{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;font-size:18px;font-weight:700}
+.section-badge.blue{background:#dbeafe;color:#1d4ed8}
+.section-badge.green{background:#d1fae5;color:#047857}
+.section-badge.violet{background:#ede9fe;color:#6d28d9}
+.stat.blue{background:linear-gradient(180deg,#eff6ff 0%,#ffffff 100%);border-color:#bfdbfe}
+.stat.violet{background:linear-gradient(180deg,#f5f3ff 0%,#ffffff 100%);border-color:#ddd6fe}
+#recentWrap tbody tr:hover, #lowTable tbody tr:hover, #studentTable tbody tr:hover{background:#fafcff}
+#recentWrap tbody tr, #lowTable tbody tr, #studentTable tbody tr{transition:.15s}
+.segment button{font-weight:700}
+.ratio-cell{display:flex;align-items:center;gap:10px;min-width:150px}
+.ratio-bar{position:relative;flex:1;height:10px;background:#eef2ff;border-radius:999px;overflow:hidden;border:1px solid #dbe3ff}
+.ratio-bar > span{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#60a5fa 0%,#7c3aed 100%)}
+.ratio-text{min-width:52px;text-align:right;font-weight:700;color:#374151}
+.card-title-line{display:flex;align-items:center;gap:8px}
+.card-title-line h3,.card-title-line h2{margin:0}
+.notice.soft-blue{background:linear-gradient(180deg,#eff6ff 0%,#f8fbff 100%);border-color:#bfdbfe}
+.notice.soft-green{background:linear-gradient(180deg,#ecfdf5 0%,#f7fffb 100%);border-color:#a7f3d0}
+.small-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;background:#f3f4f6}
+
+
+.page-hero{display:flex;align-items:center;gap:12px}
+.page-icon{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:15px;font-size:24px;font-weight:700}
+.page-icon.blue{background:#dbeafe;color:#1d4ed8}
+.page-icon.green{background:#d1fae5;color:#047857}
+.page-icon.orange{background:#fef3c7;color:#b45309}
+.page-icon.violet{background:#ede9fe;color:#6d28d9}
+.page-icon.rose{background:#ffe4e6;color:#be123c}
+.page-subtitle{color:var(--muted);font-size:14px;margin-top:2px}
+.subpanel{border:1px solid var(--line);border-radius:14px;padding:14px}
+.subpanel.blue{background:linear-gradient(180deg,#eff6ff 0%,#ffffff 100%);border-color:#bfdbfe}
+.subpanel.green{background:linear-gradient(180deg,#ecfdf5 0%,#ffffff 100%);border-color:#a7f3d0}
+.subpanel.orange{background:linear-gradient(180deg,#fff7ed 0%,#ffffff 100%);border-color:#fdba74}
+.subpanel.violet{background:linear-gradient(180deg,#f5f3ff 0%,#ffffff 100%);border-color:#ddd6fe}
+.subpanel.rose{background:linear-gradient(180deg,#fff1f2 0%,#ffffff 100%);border-color:#fecdd3}
+.subpanel-title{display:flex;align-items:center;gap:8px;font-weight:800;margin:0 0 12px;color:#1f2937}
+.toolbar{background:#fafbff;border:1px solid var(--line);border-radius:14px;padding:12px}
+.toolbar.orange{background:#fffaf3}
+.toolbar.green{background:#f7fffb}
+.inline-note{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700}
+.empty-state{padding:28px 18px;text-align:center;color:#6b7280}
+.empty-state .eicon{font-size:26px;display:block;margin-bottom:8px}
+#excelPreview .tablewrap, #overviewTable, #studentTable, #recordList .manage-row{margin-top:8px}
+
+
+.student-picker-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.student-pick{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff}
+.student-pick:hover{background:#f9fafb}
+@media(max-width:767px){.student-picker-grid{grid-template-columns:1fr 1fr}}
+
+
+.score-low{color:#9f1239;font-weight:800}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="brand">班級成績管理系統</div><div class="small" style="margin-top:2px">教師端測試版</div>
+      <div class="small" id="headerClassText">—</div>
+    </div>
+    <div class="top-actions">
+      <select id="classSwitch" class="field class-switch"></select>
+      <span class="save-status" id="saveStatus">✓ 已儲存</span>
+      <button class="btn" id="helpBtn">？ 使用說明</button>
+      <button class="btn" id="demoBtn">測試資料</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<section id="login" class="page active">
+  <div class="card pad" style="max-width:560px;margin:60px auto">
+    <h1 class="title">登入</h1>
+    <p class="subtitle">測試版使用模擬 Google 登入；正式版才會串接真正 Google 帳號與試算表。</p>
+    <button class="btn primary" id="loginBtn">使用 Google 帳號登入（測試）</button>
+  </div>
+</section>
+
+<section id="firstSetup" class="page">
+  <div class="card pad" style="max-width:720px;margin:auto">
+    <h2 class="title">建立第一個班級</h2>
+    <p class="subtitle">輸入班級名稱、學年度與學期。</p>
+    <div class="grid3">
+      <label>班級名稱<input id="setupClassName" class="field" placeholder="例如：高二智班"></label>
+      <label>學年度<input id="setupYear" class="field" placeholder="例如：115"></label>
+      <label>學期<select id="setupTerm" class="field"><option value="1">第一學期</option><option value="2">第二學期</option></select></label>
+    </div>
+    <div class="actions" style="margin-top:14px"><button class="btn primary" id="createFirstClass">下一步：建立學生資料</button></div>
+  </div>
+</section>
+
+<section id="firstStudents" class="page">
+  <div class="card pad">
+    <div class="head"><div><h2 class="title">建立學生資料</h2><div class="small">可直接貼 Excel，也可稍後補資料。</div></div></div>
+    <div class="notice soft-green">
+      <b>Excel 貼上格式：</b> 座號｜姓名｜學號｜身分證後4碼<br>
+      學號為學生／家長登入帳號；身分證後4碼為登入密碼。學號或身分證後4碼若暫時沒有，可先留空。<br>座號會自動標準化，<b>01 與 1 視為同一個座號</b>；身分證後4碼若不足4位，會自動左側補0，例如 <b>567 → 0567</b>。
+    </div>
+    <details class="help" style="margin-top:10px"><summary>查看範例</summary>
+      <pre>1    王小明    115001    1234
+2    李小華
+3    陳小美    115003    9876</pre>
+    </details>
+    <textarea id="setupStudentPaste" class="field" style="min-height:170px;margin-top:12px" placeholder="直接從 Excel 複製四欄貼上"></textarea>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn primary" id="saveFirstStudents">儲存學生資料並進入主介面</button>
+    </div>
+    <div id="setupStudentMsg" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<section id="noActiveClass" class="page">
+  <div class="card pad" style="max-width:720px;margin:60px auto;text-align:center">
+    <div class="page-icon rose" style="margin:0 auto 12px">📦</div>
+    <h2 class="title">目前沒有使用中的班級</h2>
+    <p class="subtitle">你可以新增一個班級，或到「班級資料管理」重新啟用已封存班級。</p>
+    <div class="actions" style="justify-content:center;margin-top:16px">
+      <button class="btn primary" id="emptyNewClassBtn">＋ 新增班級</button>
+      <button class="btn" id="emptyManageBtn">班級資料管理</button>
+    </div>
+  </div>
+</section>
+
+<section id="dash" class="page">
+  <div class="grid5">
+    <div class="card tile entry"><div><div class="icon">＋</div><h3>成績輸入</h3><p class="small">手動輸入或 Excel 貼上</p></div><button class="btn soft" data-page="entry">進入</button></div>
+    <div class="card tile overview"><div><div class="icon">▦</div><h3>成績總覽</h3><p class="small">學生 × 考試完整表格</p></div><button class="btn soft" data-page="overview">進入</button></div>
+    <div class="card tile records"><div><div class="icon">◷</div><h3>考試紀錄</h3><p class="small">查看、編輯、刪除</p></div><button class="btn soft" data-page="records">進入</button></div>
+    <div class="card tile students"><div><div class="icon">👥</div><h3>學生與帳號管理</h3><p class="small">管理座號、姓名、學號、身分證後4碼</p></div><button class="btn soft" data-page="students">進入</button></div>
+    <div class="card tile settings"><div><div class="icon">⚙</div><h3>統計與設定</h3><p class="small">班級資料與設定</p></div><button class="btn soft" data-page="settings">進入</button></div>
+  </div>
+
+  <div class="dashboard-mid">
+    <div class="card pad">
+      <div class="head">
+        <div><div class="section-head"><span class="section-badge blue">📝</span><div><h3 style="margin:0">近期考試</h3><div class="small">可在區塊內向下捲動</div></div></div></div>
+        <button class="btn" data-page="records">查看全部考試 →</button>
+      </div>
+      <div class="tablewrap scroll-y" id="recentWrap"></div>
+    </div>
+    <div class="card pad">
+      <div class="section-head" style="margin-bottom:12px"><span class="section-badge violet">📊</span><h3 style="margin:0">班級概況</h3></div>
+      <div class="stats2">
+        <div class="card stat blue"><div class="small">學生人數</div><div class="num" id="statStudents">0</div></div>
+        <div class="card stat violet"><div class="small">已登記考試數</div><div class="num" id="statExams">0</div></div>
+      </div>
+      <div class="notice soft-blue" style="margin-top:12px" id="classSummary"></div>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-top:14px">
+    <div class="head">
+      <div><div class="section-head"><span class="section-badge green">📉</span><div><h3 style="margin:0">近期低於平均狀況</h3><div class="small">依每場考試班平均比較</div></div></div></div>
+      <button class="btn" id="expandLow">全部展開</button>
+    </div>
+
+    <div class="segment" id="lowRangeSegment">
+      <button class="active" data-low-range="n10">最近10次</button>
+      <button data-low-range="d14">最近2週</button>
+      <button data-low-range="customN">自訂次數</button>
+      <button data-low-range="customD">自訂日期區間</button>
+      <button data-low-range="all">全部</button>
+    </div>
+    <div id="lowCustomControls" style="margin-top:10px"></div>
+
+    <div class="segment" id="lowSortSegment" style="margin-top:10px">
+      <button class="active" data-low-sort="seat">照座號</button>
+      <button data-low-sort="desc">比例高 → 低</button>
+      <button data-low-sort="asc">比例低 → 高</button>
+    </div>
+
+    <div id="lowRangeLabel" class="small" style="margin-top:10px"></div>
+    <div class="tablewrap" id="lowTable" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<section id="entry" class="page">
+  <div class="card pad">
+    <div class="head"><div class="page-hero"><span class="page-icon blue">＋</span><div><h2 class="title">成績輸入</h2><div class="small" id="entryClassText"></div><div class="page-subtitle">支援手動輸入與 Excel 貼上兩種方式</div></div></div><button class="btn" data-page="dash">← 回主介面</button></div>
+    <div class="segment" id="entryModeSegment">
+      <button class="active" data-entry-mode="manual">手動輸入</button>
+      <button data-entry-mode="excel">Excel 貼上</button>
+    </div>
+
+    <div id="manualEntry" style="margin-top:14px">
+      <div class="subpanel blue"><div class="subpanel-title">🧾 基本資料</div><div class="grid3">
+        <label>日期<input type="date" id="manualDate" class="field"></label>
+        <label>科目<input id="manualSubject" class="field" list="subjectList" placeholder="可選既有科目或輸入新科目"><datalist id="subjectList"></datalist></label>
+        <label>考試名稱／章節<input id="manualName" class="field"></label>
+      </div></div>
+      <div class="subpanel blue" style="margin-top:12px"><div class="subpanel-title">👥 學生成績</div><div class="tablewrap" id="manualScoreTable"></div></div>
+      <div class="actions" style="margin-top:12px"><button class="btn primary" id="saveManualExam">儲存考試</button></div>
+    </div>
+
+    <div id="excelEntry" style="display:none;margin-top:14px">
+      <div class="subpanel blue"><div class="subpanel-title">📋 Excel 匯入</div><div class="notice soft-blue"><b>可直接貼上原本 Excel 的科目、考試內容與學生分數。</b><br>系統會自動辨識，並先讓你預覽再儲存。</div>
+      <details class="help" style="margin-top:10px"><summary>查看 Excel 格式說明</summary>
+        <p>第1列固定視為科目；第2、3列會自動判斷是考試名稱／章節或已開始進入成績。最多支援「1列科目＋2列內容」。可一次貼多個考試欄位。</p>
+        <pre>國文    國文    英文
+讀家    B1B2    練英單
+U41-U50 複習考1 U13
+98.5    76.4    51
+88      82      64</pre>
+        <p>平均、總分、排名、名次等統計欄位預設不匯入；空白位置會保留。</p>
+      </details>
+      <label style="display:block;margin-top:10px">本批考試日期<input type="date" id="excelDate" class="field"></label>
+      <textarea id="excelPaste" class="field" style="min-height:190px;margin-top:10px" placeholder="從 Excel 複製後貼上"></textarea>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn soft" id="parseExcel">辨識並預覽</button>
+        <button class="btn primary" id="saveExcelExams">儲存勾選考試</button>
+      </div>
+      <div id="excelPreview" style="margin-top:12px"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="overview" class="page">
+  <div class="card pad">
+    <div class="head"><div class="page-hero"><span class="page-icon green">▦</span><div><h2 class="title">成績總覽</h2><div class="small" id="overviewClassText"></div><div class="page-subtitle">依科目、最近次數或日期區間查看全班成績</div></div></div><button class="btn" data-page="dash">← 回主介面</button></div>
+    <div class="toolbar green">
+      <label>科目<select id="overviewSubject" class="field"><option value="">全部科目</option></select></label>
+      <div>
+        <div class="small" style="font-weight:700;margin-bottom:6px">學生</div>
+        <button class="btn" id="overviewStudentBtn">全班 ▾</button>
+      </div>
+      <div>
+        <div class="small" style="font-weight:700;margin-bottom:6px">顯示範圍</div>
+        <div class="segment" id="overviewRangeSegment">
+          <button class="active" data-ov-range="n10">最近10次</button>
+          <button data-ov-range="d14">最近2週</button>
+          <button data-ov-range="customN">自訂次數</button>
+          <button data-ov-range="customD">自訂日期區間</button>
+          <button data-ov-range="all">全部</button>
+        </div>
+      </div>
+      <div id="overviewRangeControls"></div>
+    </div>
+    <div id="overviewRangeLabel" class="small" style="margin:10px 0"></div>
+    <div id="overviewTable" class="tablewrap"></div>
+  </div>
+</section>
+
+<section id="records" class="page">
+  <div class="card pad">
+    <div class="head"><div class="page-hero"><span class="page-icon orange">◷</span><div><h2 class="title">考試紀錄</h2><div class="small" id="recordsClassText"></div><div class="page-subtitle">可查看、編輯、刪除已儲存的考試</div></div></div><button class="btn" data-page="dash">← 回主介面</button></div>
+    <div class="toolbar orange">
+      <label>開始日期<input type="date" id="recordStart" class="field"></label>
+      <label>結束日期<input type="date" id="recordEnd" class="field"></label>
+      <label>科目<select id="recordSubject" class="field"><option value="">全部科目</option></select></label>
+      <label>考試名稱<input id="recordKey" class="field" placeholder="關鍵字"></label>
+      <label>排序<select id="recordSort" class="field"><option value="desc">新 → 舊</option><option value="asc">舊 → 新</option></select></label>
+      <button class="btn" id="clearRecordFilters">清除篩選</button>
+    </div>
+    <div id="recordList" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<section id="students" class="page">
+  <div class="card pad">
+    <div class="head"><div class="page-hero"><span class="page-icon violet">👥</span><div><h2 class="title">學生與帳號管理</h2><div class="small" id="studentsClassText"></div><div class="page-subtitle">管理座號、姓名、學號與身分證後4碼</div></div></div><button class="btn" data-page="dash">← 回主介面</button></div>
+
+    <div class="notice soft-blue"><b>Excel 貼上格式：</b> 座號｜姓名｜學號｜身分證後4碼。學號為學生／家長登入帳號，身分證後4碼為登入密碼。資料不完整可稍後補上。<br>座號會自動標準化，<b>01 與 1 視為同一個座號</b>；身分證後4碼若不足4位，會自動左側補0，例如 <b>567 → 0567</b>。</div>
+    <details class="help" style="margin-top:10px"><summary>查看範例</summary><pre>1    王小明    115001    1234
+2    李小華
+3    陳小美    115003    9876</pre></details>
+
+    <div class="grid2" style="margin-top:14px">
+      <div class="card pad subpanel violet">
+        <h3 style="margin-top:0">Excel 貼上</h3>
+        <textarea id="studentPaste" class="field" style="min-height:150px"></textarea>
+        <button class="btn primary" id="saveStudentPaste" style="margin-top:10px">儲存學生資料</button>
+      </div>
+      <div class="card pad subpanel violet">
+        <h3 style="margin-top:0">手動新增</h3>
+        <div class="grid2">
+          <label>座號<input id="addSeat" class="field"></label>
+          <label>姓名<input id="addName" class="field"></label>
+          <label>學號<input id="addAccount" class="field"></label>
+          <label>身分證後4碼<input id="addPass" class="field"></label>
+        </div>
+        <button class="btn primary" id="addStudent" style="margin-top:10px">新增學生</button>
+      </div>
+    </div>
+    <div id="studentTable" class="tablewrap" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<section id="settings" class="page">
+  <div class="card pad">
+    <div class="head"><div class="page-hero"><span class="page-icon rose">⚙</span><div><h2 class="title">統計與設定</h2><div class="small" id="settingsClassText"></div><div class="page-subtitle">班級資料管理與正式版 Google 雲端規劃</div></div></div><button class="btn" data-page="dash">← 回主介面</button></div>
+    <div class="grid2">
+      <div class="card pad subpanel rose">
+        <h3 style="margin-top:0">班級資料管理</h3>
+        <div class="actions">
+          <button class="btn primary" id="newClassBtn">＋ 新增班級</button>
+          <button class="btn" id="nextTermBtn">建立下一學期</button>
+        </div>
+        <h4>使用中的班級</h4>
+        <div id="activeClassList"></div>
+        <h4 style="margin-top:18px">已封存班級</h4>
+        <div id="archivedClassList"></div>
+      </div>
+      <div class="card pad subpanel blue">
+        <h3 style="margin-top:0">Google 雲端資料（正式版規劃）</h3>
+        <div class="notice">
+          每個「班級＋學年度＋學期」會使用獨立 Google 試算表，另有班級索引資料。網站不依賴檔名，而會用 Spreadsheet ID 與班級識別資料定位。
+        </div>
+        <p class="small">正式接 Google 後，右上角會顯示「儲存中…／✓ 已儲存／⚠ 尚未儲存」。目前測試版仍使用瀏覽器 localStorage。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="helpDrawer">
+  <div class="head"><h2 style="margin:0">使用說明</h2><button class="btn" id="closeHelp">×</button></div>
+  <h3>班級資料</h3><p>每個班級資料包含班級名稱、學年度、學期、學生資料、考試與成績。舊班級可封存，之後可重新啟用。</p>
+  <h3>學生資料</h3><p>Excel 欄位為「座號｜姓名｜學號｜身分證後4碼」。學號為學生／家長登入帳號；身分證後4碼為登入密碼。學號或後4碼可先留空。座號會自動標準化，因此 01 與 1 會視為同一個座號；身分證後4碼若不足4位，系統會自動補0，例如 567 會存成 0567。</p>
+  <h3>成績輸入</h3><p>可手動輸入或直接從 Excel 複製貼上。Excel 第1列視為科目，第2、3列由系統判斷是否為考試內容或已開始進入分數。</p>
+  <h3>平均計算</h3><p>平均＝有效成績總和 ÷ 實際有成績人數。空白不算，0分要算；平均顯示小數第2位。所有顯示個人成績的畫面中，低於該次班平均的分數會以深紅色文字標示。</p>
+  <h3>成績總覽</h3><p>可依科目、自訂最近幾次或自訂日期區間查看。最新考試在左，表格最後一列顯示平均。</p>
+  <h3>低於平均</h3><p>只有學生成績低於該次班平均才計一次。可看最近10次、最近2週、自訂次數或自訂日期區間。</p>
+  <h3>新學期與封存</h3><p>第一學期可使用「建立下一學期」，複製學生名單但不複製考試與成績。若目前已是第二學期，下一學年度請使用「新增班級」，重新設定班級名稱、學年度與學期。封存不刪資料，之後可重新啟用。</p>
+  <h3>Google 試算表</h3><p>正式版的檔名可自行修改，但不建議任意刪除或重新命名系統工作表。若偵測資料格式異常，系統會停止寫入並提示修復。</p>
+</aside>
+
+<div class="modal" id="guideModal">
+  <div class="modal-card">
+    <h2>歡迎使用班級成績管理系統</h2>
+    <div class="notice">
+      ① 建立班級<br>
+      ② 建立學生資料<br>
+      ③ 輸入成績<br>
+      ④ 查看成績與統計<br>
+      ⑤ 新學期可建立下一學期，舊班級也可封存
+    </div>
+    <div class="actions" style="margin-top:14px"><button class="btn primary" id="closeGuide">開始使用</button></div>
+  </div>
+</div>
+
+<div class="modal" id="genericModal"><div class="modal-card" id="genericModalCard"></div></div>
+<div class="toast" id="toast">✓ 已儲存</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const today = ()=> new Date().toISOString().slice(0,10);
+const dateSlash = d => d ? d.replaceAll('-','/') : '';
+const uuid = ()=> 'CLS-' + Math.random().toString(36).slice(2,8).toUpperCase();
+
+let app = {
+  logged:false,
+  currentClassId:null,
+  classes:[],
+  page:'login',
+  lowRange:'n10',
+  lowCustomN:10,
+  lowStart:'',
+  lowEnd:'',
+  lowSort:'seat',
+  lowExpanded:false,
+  ovRange:'n10',ovStudents:[],
+  ovCount:20,
+  ovStart:'',
+  ovEnd:'',
+  examDate:today()
+};
+
+function save(){
+  localStorage.setItem('grade_app_v4',JSON.stringify(app));
+  $('saveStatus').textContent='✓ 已儲存';
+}
+function load(){
+  const x=localStorage.getItem('grade_app_v4');
+  if(x){ try{ app={...app,...JSON.parse(x)} }catch(e){} }
+}
+function toast(msg){
+  $('toast').textContent=msg;$('toast').classList.add('show');
+  setTimeout(()=>$('toast').classList.remove('show'),2200);
+}
+function currentClass(){ return app.classes.find(c=>c.id===app.currentClassId) || null; }
+
+function normalizeSeat(v){
+  v=String(v??'').trim();
+  if(v==='') return '';
+  if(!/^\d+$/.test(v)) return null;
+  return String(parseInt(v,10));
+}
+function normalizePass(v){
+  v=String(v??'').trim();
+  if(v==='') return '';
+  if(!/^\d{1,4}$/.test(v)) return null;
+  return v.padStart(4,'0');
+}
+function migrateData(){
+  (app.classes||[]).forEach(c=>{
+    c.students=(c.students||[]).map(s=>{
+      const seat=normalizeSeat(s.seat);
+      const pass=normalizePass(s.pass);
+      return {...s, seat: seat===null?String(s.seat??'').trim():seat, account:String(s.account??'').trim(), pass: pass===null?String(s.pass??'').trim():pass, name:String(s.name??'').trim()};
+    }).filter(s=>s.seat!=='' && s.name!=='').sort((a,b)=>Number(a.seat)-Number(b.seat));
+    (c.exams||[]).forEach(e=>{
+      e.scores=(e.scores||[]).map(sc=>({...sc, seat: normalizeSeat(sc.seat) ?? String(sc.seat??'').trim(), name:String(sc.name??'').trim(), value:String(sc.value??'').trim()}));
+    });
+  });
+}
+function activeClasses(){ return app.classes.filter(c=>!c.archived); }
+function archivedClasses(){ return app.classes.filter(c=>c.archived); }
+
+function show(page){
+  app.page=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  $(page).classList.add('active');
+  if(page==='dash') renderDash();
+  if(page==='entry') renderEntry();
+  if(page==='overview') renderOverview();
+  if(page==='records') renderRecords();
+  if(page==='students') renderStudents();
+  if(page==='settings') renderSettings();
+  updateHeader();
+  save();
+}
+document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>show(b.dataset.page));
+
+function classLabel(c){ return c ? `${c.name} · ${c.year}學年度第${c.term}學期` : '尚未建立班級'; }
+function updateHeader(){
+  const c=currentClass();
+  $('headerClassText').textContent=classLabel(c);
+  ['entryClassText','overviewClassText','recordsClassText','studentsClassText','settingsClassText'].forEach(id=>{ if($(id)) $(id).textContent=classLabel(c); });
+  const act=activeClasses();
+  $('classSwitch').innerHTML=(act.length?act.map(c=>`<option value="${c.id}" ${c.id===app.currentClassId?'selected':''}>${esc(c.name)}｜${c.year}-${c.term}</option>`).join(''):`<option value="" disabled selected>目前無使用中班級</option>`) + `<option value="__manage">＋ 新增／管理班級</option>`;
+}
+$('classSwitch').onchange=e=>{
+  if(e.target.value==='__manage'){ show('settings'); updateHeader(); return; }
+  if(!e.target.value) return;
+  app.currentClassId=e.target.value; app.ovStudents=[]; save(); show('dash');
+};
+
+function ensureClass(){ const c=currentClass(); return c || null; }
+function validNumbers(exam){
+  return exam.scores.filter(s=>String(s.value).trim()!=='' && Number.isFinite(Number(s.value))).map(s=>Number(s.value));
+}
+function avg(exam){
+  const a=validNumbers(exam); return a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+}
+function fmt(n){ return n===null || n===undefined || Number.isNaN(n) ? '—' : Number(n).toFixed(2); }
+
+$('loginBtn').onclick=()=>{
+  app.logged=true; save();
+  if(!app.classes.length) show('firstSetup'); else show('dash');
+};
+$('createFirstClass').onclick=()=>{
+  const name=$('setupClassName').value.trim(), year=$('setupYear').value.trim(), term=$('setupTerm').value;
+  if(!name||!year){ alert('請輸入班級名稱與學年度。'); return; }
+  const c={id:uuid(),name,year,term,archived:false,students:[],exams:[]};
+  app.classes.push(c); app.currentClassId=c.id; save(); show('firstStudents');
+};
+
+function parseStudentRows(text){
+  let lines=text.replace(/\r/g,'').split('\n');
+  while(lines.length && lines[lines.length-1]==='') lines.pop();
+  return lines.map(line=>line.split('\t')).filter(cols=>cols.some(v=>String(v).trim()!=='')).map(cols=>({
+    seat:String(cols[0]??'').trim(), name:String(cols[1]??'').trim(), account:String(cols[2]??'').trim(), pass:String(cols[3]??'').trim()
+  }));
+}
+function mergeStudents(c, rows){
+  const normalized = [];
+  for(const row of rows){
+    const rawSeat=String(row.seat??'').trim();
+    const rawName=String(row.name??'').trim();
+    const rawAccount=String(row.account??'').trim();
+    const rawPass=String(row.pass??'').trim();
+    if(!rawSeat && !rawName && !rawAccount && !rawPass) continue;
+    const seat=normalizeSeat(rawSeat);
+    if(rawSeat && seat===null) return {ok:false,msg:`座號「${rawSeat}」格式不正確，請使用數字。`};
+    const pass=normalizePass(rawPass);
+    if(rawPass!=='' && pass===null) return {ok:false,msg:`身分證後4碼「${rawPass}」格式不正確，請輸入 1～4 位數字。`};
+    normalized.push({seat:seat||'', name:rawName, account:rawAccount, pass:pass===null?'':pass});
+  }
+
+  const duplicateAccounts = [];
+  normalized.forEach(r=>{
+    if(!r.seat || !r.name) return;
+    if(r.account){
+      const hit=c.students.find(s=>s.account===r.account && s.seat!==r.seat);
+      if(hit) duplicateAccounts.push(r.account);
+    }
+  });
+  if(duplicateAccounts.length) return {ok:false,msg:`以下學號已被其他學生使用：${[...new Set(duplicateAccounts)].join('、')}`};
+
+  const dupSeats = normalized.filter(r=>r.seat && c.students.some(s=>s.seat===r.seat));
+  if(dupSeats.length){
+    const seats=[...new Set(dupSeats.map(r=>r.seat))];
+    return {ok:false,needsConfirm:true,seats,normalized};
+  }
+  normalized.forEach(r=>{
+    if(!r.seat || !r.name) return;
+    const hit=c.students.find(s=>s.seat===r.seat);
+    if(hit) Object.assign(hit,r); else c.students.push(r);
+  });
+  c.students.sort((a,b)=>Number(a.seat)-Number(b.seat));
+  return {ok:true};
+}
+
+function applyStudentMerge(c, normalized){
+  normalized.forEach(r=>{
+    if(!r.seat || !r.name) return;
+    const hit=c.students.find(s=>s.seat===r.seat);
+    if(hit) Object.assign(hit,r); else c.students.push(r);
+  });
+  c.students.sort((a,b)=>Number(a.seat)-Number(b.seat));
+}
+
+function confirmDuplicateStudentMerge(c,res,onDone){
+  const rows=res.normalized.filter(r=>res.seats.includes(r.seat));
+  openModal(`<div class="head"><div><h2 style="margin:0">更新既有學生資料？</h2><div class="small">偵測到重複座號</div></div><button class="btn" data-close-modal>×</button></div>
+  <div class="notice soft-blue">
+    以下座號已存在：<b>${res.seats.map(esc).join('、')}</b><br>
+    若繼續，會用這次貼上的姓名、學號與身分證後4碼更新原本學生資料；其他未重複座號則會正常新增。
+  </div>
+  <div class="tablewrap" style="margin-top:12px">
+    <table><thead><tr><th>座號</th><th>姓名</th><th>學號</th><th>身分證後4碼</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${esc(r.seat)}</td><td>${esc(r.name)}</td><td>${esc(r.account)}</td><td>${esc(r.pass)}</td></tr>`).join('')}</tbody></table>
+  </div>
+  <div class="actions" style="margin-top:14px">
+    <button class="btn" data-close-modal>取消</button>
+    <button class="btn primary" id="confirmStudentMerge">確定更新</button>
+  </div>`);
+  $('confirmStudentMerge').onclick=()=>{
+    applyStudentMerge(c,res.normalized);
+    save();
+    closeModal();
+    if(onDone) onDone();
+    toast('✓ 學生資料已更新');
+  };
+}
+$('saveFirstStudents').onclick=()=>{
+  const c=currentClass(); const rows=parseStudentRows($('setupStudentPaste').value);
+  const res=mergeStudents(c,rows);
+  if(!res.ok){
+    if(res.needsConfirm){
+      confirmDuplicateStudentMerge(c,res,()=>{$('guideModal').classList.add('open');show('dash');});
+      return;
+    }
+    $('setupStudentMsg').innerHTML=`<div class="notice">${esc(res.msg)}</div>`; return;
+  }
+  save(); $('guideModal').classList.add('open'); show('dash');
+};
+$('closeGuide').onclick=()=>{$('guideModal').classList.remove('open');};
+
+function renderDash(){
+  const c=ensureClass(); if(!c) return;
+  $('statStudents').textContent=c.students.length;
+  $('statExams').textContent=c.exams.length;
+  $('classSummary').innerHTML=`<div class="small-chip">🏫 ${esc(c.name)}</div> <div class="small-chip">📘 ${esc(c.year)}學年度</div> <div class="small-chip">🗓 第${esc(c.term)}學期</div>`;
+
+  const ex=[...c.exams].sort((a,b)=>b.date.localeCompare(a.date));
+  $('recentWrap').innerHTML=ex.length?`<table><thead><tr><th>日期</th><th>科目</th><th>考試名稱</th><th>有成績人數</th><th>班平均</th><th>最高</th><th>最低</th></tr></thead><tbody>${ex.map((e,i)=>{
+    const vals=validNumbers(e), idx=c.exams.indexOf(e);
+    return `<tr data-recent="${idx}" style="cursor:pointer"><td>${dateSlash(e.date).slice(5)}</td><td>${esc(e.subject)}</td><td>${esc(e.name)}</td><td>${vals.length}人</td><td>${fmt(avg(e))}</td><td>${vals.length?Math.max(...vals):'—'}</td><td>${vals.length?Math.min(...vals):'—'}</td></tr>`
+  }).join('')}</tbody></table>`:`<div class="empty-state"><span class="eicon">🗒️</span>尚無成績資料</div>`;
+  document.querySelectorAll('[data-recent]').forEach(r=>r.onclick=()=>openExamView(+r.dataset.recent));
+  renderLow();
+}
+
+function getEligibleForStudent(c, st){
+  const exams=[...c.exams].sort((a,b)=>b.date.localeCompare(a.date));
+  if(app.lowRange==='n10' || app.lowRange==='customN'){
+    if(app.lowRange==='customN' && !app.lowCustomN) return [];
+    const n=app.lowRange==='n10'?10:Number(app.lowCustomN);
+    return exams.filter(e=>e.scores.some(s=>s.seat===st.seat && String(s.value).trim()!=='' && Number.isFinite(Number(s.value)))).slice(0,n);
+  }
+  if(app.lowRange==='all'){
+    return exams.filter(e=>e.scores.some(s=>s.seat===st.seat && String(s.value).trim()!=='' && Number.isFinite(Number(s.value))));
+  }
+  const now=new Date();
+  let start='',end=today();
+  if(app.lowRange==='d14'){
+    const d=new Date(); d.setDate(d.getDate()-13); start=d.toISOString().slice(0,10);
+  }else{
+    if(!app.lowStart || !app.lowEnd) return [];
+    start=app.lowStart; end=app.lowEnd;
+  }
+  return exams.filter(e=>(!start||e.date>=start)&&(!end||e.date<=end));
+}
+function renderLowControls(){
+  $('lowCustomControls').innerHTML='';
+  if(app.lowRange==='customN'){
+    $('lowCustomControls').innerHTML=`<div class="toolbar"><label>最近次數<input id="lowNInput" type="number" min="1" class="field" value="${app.lowCustomN||''}" placeholder="請輸入次數"></label><button class="btn soft" id="applyLowN">套用</button></div>`;
+    $('applyLowN').onclick=()=>{
+      const n=Number($('lowNInput').value);
+      if(!Number.isFinite(n)||n<1){alert('請輸入至少 1 次。');return;}
+      app.lowCustomN=Math.floor(n);save();renderLow();
+    }
+  }else if(app.lowRange==='customD'){
+    $('lowCustomControls').innerHTML=`<div class="toolbar"><label>開始日期<input id="lowStartInput" type="date" class="field" value="${app.lowStart}"></label><label>結束日期<input id="lowEndInput" type="date" class="field" value="${app.lowEnd}"></label><button class="btn soft" id="applyLowD">套用</button></div>`;
+    $('applyLowD').onclick=()=>{
+      const s=$('lowStartInput').value,e=$('lowEndInput').value;
+      if(!s||!e){alert('請選擇開始日期與結束日期。');return;}
+      if(s>e){alert('開始日期不能晚於結束日期。');return;}
+      app.lowStart=s;app.lowEnd=e;save();renderLow();
+    }
+  }
+}
+document.querySelectorAll('[data-low-range]').forEach(b=>b.onclick=()=>{
+  const next=b.dataset.lowRange;
+  app.lowRange=next;
+  if(next==='customN'){
+    app.lowCustomN='';
+  }
+  if(next==='customD'){
+    app.lowStart='';
+    app.lowEnd='';
+  }
+  document.querySelectorAll('[data-low-range]').forEach(x=>x.classList.toggle('active',x.dataset.lowRange===app.lowRange));
+  renderLowControls();save();renderLow();
+});
+document.querySelectorAll('[data-low-sort]').forEach(b=>b.onclick=()=>{
+  app.lowSort=b.dataset.lowSort;
+  document.querySelectorAll('[data-low-sort]').forEach(x=>x.classList.toggle('active',x.dataset.lowSort===app.lowSort));
+  save();renderLow();
+});
+$('expandLow').onclick=()=>{app.lowExpanded=!app.lowExpanded;save();renderLow();};
+
+function renderLow(){
+  const c=ensureClass(); if(!c) return;
+  renderLowControls();
+  document.querySelectorAll('[data-low-range]').forEach(x=>x.classList.toggle('active',x.dataset.lowRange===app.lowRange));
+  document.querySelectorAll('[data-low-sort]').forEach(x=>x.classList.toggle('active',x.dataset.lowSort===app.lowSort));
+  $('expandLow').textContent=app.lowExpanded?'收合':'全部展開';
+
+  if(app.lowRange==='n10') $('lowRangeLabel').textContent='目前範圍：每位學生最近10筆有效成績';
+  if(app.lowRange==='d14') $('lowRangeLabel').textContent='目前範圍：最近2週';
+  if(app.lowRange==='customN') $('lowRangeLabel').textContent=app.lowCustomN?`目前範圍：每位學生最近 ${app.lowCustomN} 筆有效成績`:'請重新設定自訂次數';
+  if(app.lowRange==='customD') $('lowRangeLabel').textContent=(app.lowStart&&app.lowEnd)?`目前區間：${dateSlash(app.lowStart)} ～ ${dateSlash(app.lowEnd)}`:'請重新設定自訂日期區間';
+  if(app.lowRange==='all') $('lowRangeLabel').textContent='目前範圍：全部歷史有效成績';
+
+  let rows=c.students.map(st=>{
+    let n=0,l=0;
+    getEligibleForStudent(c,st).forEach(e=>{
+      const s=e.scores.find(x=>x.seat===st.seat);
+      if(!s || String(s.value).trim()==='' || !Number.isFinite(Number(s.value))) return;
+      n++;
+      if(Number(s.value)<avg(e)) l++;
+    });
+    return {st,n,l,r:n?l/n:0};
+  });
+
+  if(app.lowSort==='seat') rows.sort((a,b)=>Number(a.st.seat)-Number(b.st.seat));
+  if(app.lowSort==='desc') rows.sort((a,b)=>b.r-a.r||b.l-a.l||Number(a.st.seat)-Number(b.st.seat));
+  if(app.lowSort==='asc') rows.sort((a,b)=>a.r-b.r||a.l-b.l||Number(a.st.seat)-Number(b.st.seat));
+
+  const show=app.lowExpanded?rows:rows.slice(0,8);
+  $('lowTable').innerHTML=`<table><thead><tr><th>座號</th><th>姓名</th><th>有成績次數</th><th>低於平均次數</th><th>低於平均比例</th><th>操作</th></tr></thead><tbody>${show.map(r=>`<tr><td>${esc(r.st.seat)}</td><td>${esc(r.st.name)}</td><td>${r.n}</td><td>${r.l}</td><td><div class="ratio-cell"><div class="ratio-bar"><span style="width:${(r.r*100).toFixed(1)}%"></span></div><div class="ratio-text">${(r.r*100).toFixed(1)}%</div></div></td><td><button class="btn" data-low-detail="${esc(r.st.seat)}">查看詳情</button></td></tr>`).join('')}</tbody></table>`;
+  document.querySelectorAll('[data-low-detail]').forEach(b=>b.onclick=()=>openLowDetail(b.dataset.lowDetail));
+}
+function openLowDetail(seat){
+  const c=currentClass(), st=c.students.find(s=>s.seat===seat); if(!st)return;
+  const rows=[];
+  getEligibleForStudent(c,st).forEach(e=>{
+    const s=e.scores.find(x=>x.seat===seat);
+    if(!s || String(s.value).trim()==='' || !Number.isFinite(Number(s.value))) return;
+    const a=avg(e), v=Number(s.value), status=v<a?'低於平均':v===a?'等於平均':'高於平均';
+    rows.push({e,v,a,status});
+  });
+  openModal(`<div class="head"><div><h2 style="margin:0">${esc(st.seat)}號 ${esc(st.name)}</h2><div class="small">低於平均詳細資料</div></div><button class="btn" data-close-modal>×</button></div>
+  <div class="tablewrap"><table><thead><tr><th>日期</th><th>科目</th><th>考試名稱</th><th>學生成績</th><th>班平均</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${dateSlash(r.e.date)}</td><td>${esc(r.e.subject)}</td><td>${esc(r.e.name)}</td><td>${r.status==='低於平均'?`<span class="score-low">${r.v}</span>`:r.v}</td><td>${fmt(r.a)}</td><td><span class="badge ${r.status==='低於平均'?'low':r.status==='等於平均'?'eq':'high'}">${r.status}</span></td></tr>`).join('')}</tbody></table></div>`);
+}
+
+function renderEntry(){
+  const c=currentClass(); if(!c) return;
+  $('manualDate').value=app.examDate||today();
+  $('excelDate').value=app.examDate||today();
+  $('subjectList').innerHTML=[...new Set(c.exams.map(e=>e.subject).filter(Boolean))].sort().map(s=>`<option value="${esc(s)}"></option>`).join('');
+  $('manualScoreTable').innerHTML=`<table><thead><tr><th>座號</th><th>姓名</th><th>成績</th></tr></thead><tbody>${c.students.map((s,i)=>`<tr><td>${esc(s.seat)}</td><td>${esc(s.name)}</td><td><input class="field score-input" data-index="${i}" inputmode="decimal"></td></tr>`).join('')}</tbody></table>`;
+  bindEnterJump('.score-input');
+}
+document.querySelectorAll('[data-entry-mode]').forEach(b=>b.onclick=()=>{
+  const mode=b.dataset.entryMode;
+  document.querySelectorAll('[data-entry-mode]').forEach(x=>x.classList.toggle('active',x.dataset.entryMode===mode));
+  $('manualEntry').style.display=mode==='manual'?'block':'none';
+  $('excelEntry').style.display=mode==='excel'?'block':'none';
+});
+function bindEnterJump(sel){
+  const ins=[...document.querySelectorAll(sel)];
+  ins.forEach((el,i)=>el.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault(); if(ins[i+1]){ins[i+1].focus();ins[i+1].select();}}});
+}
+$('saveManualExam').onclick=()=>{
+  const c=currentClass();
+  const date=$('manualDate').value, subject=$('manualSubject').value.trim(), name=$('manualName').value.trim();
+  if(!date||!subject||!name){alert('請填寫日期、科目與考試名稱。');return;}
+  const inputs=[...document.querySelectorAll('.score-input')];
+  const scores=inputs.map((el,i)=>({seat:c.students[i].seat,name:c.students[i].name,value:el.value.trim()}));
+  if(scores.some(s=>s.value!==''&&!Number.isFinite(Number(s.value)))){alert('成績只能輸入數字或留空。');return;}
+  c.exams.push({date,subject,name,scores}); app.examDate=date; save(); toast('✓ 成績已儲存'); show('dash');
+};
+
+let parsedExcel=[];
+function numericRatio(row){
+  const filled=row.filter(x=>String(x).trim()!=='');
+  if(!filled.length) return 0;
+  const nums=filled.filter(x=>Number.isFinite(Number(String(x).trim())));
+  return nums.length/filled.length;
+}
+function parseGradePaste(text){
+  let lines=text.replace(/\r/g,'').split('\n');
+  while(lines.length && lines[lines.length-1]==='') lines.pop();
+  const rows=lines.map(l=>l.split('\t'));
+  if(!rows.length) return [];
+  const subjects=rows[0];
+  let titleRows=[], scoreStart=1;
+  for(let r=1;r<=2 && r<rows.length;r++){
+    if(numericRatio(rows[r])>=0.7){scoreStart=r;break;}
+    titleRows.push(rows[r]); scoreStart=r+1;
+  }
+  const maxCols=Math.max(...rows.map(r=>r.length));
+  const result=[];
+  for(let col=0;col<maxCols;col++){
+    const subject=String(subjects[col]??'').trim();
+    if(!subject) continue;
+    const name=titleRows.map(r=>String(r[col]??'').trim()).filter(Boolean).join('｜');
+    const ignore=/平均|總分|排名|名次/.test(subject)||/平均|總分|排名|名次/.test(name);
+    const scores=[];
+    for(let r=scoreStart;r<rows.length;r++){
+      const raw=String(rows[r][col]??'').trim();
+      scores.push({value:raw,valid:(raw===''||Number.isFinite(Number(raw)))});
+    }
+    result.push({subject,name:name||'未命名考試',ignore,scores});
+  }
+  return result;
+}
+$('parseExcel').onclick=()=>{
+  parsedExcel=parseGradePaste($('excelPaste').value);
+  if(!parsedExcel.length){$('excelPreview').innerHTML='<div class="notice">沒有辨識到有效考試資料。</div>';return;}
+  const c=currentClass();
+  $('excelPreview').innerHTML=`<div class="tablewrap"><table><thead><tr><th>匯入</th><th>科目</th><th>考試名稱</th><th>辨識結果</th></tr></thead><tbody>${parsedExcel.map((e,i)=>{
+    const invalid=e.scores.map((s,idx)=>({...s,idx})).filter(s=>s.value!==''&&!s.valid);
+    const filled=e.scores.filter(s=>s.value!=='').length;
+    const errText=invalid.length
+      ? `<div style="color:#9f1239;font-weight:700;margin-top:4px">${invalid.slice(0,6).map(s=>{const st=c.students[s.idx];return `${st?esc(st.seat)+'號 '+esc(st.name):'第'+(s.idx+1)+'列'}：「${esc(s.value)}」`;}).join('、')}${invalid.length>6?'……':''}<br><span style="font-weight:600">成績只能是數字或空白。</span></div>`
+      : `<span class="small">有效格式</span>`;
+    return `<tr><td><input type="checkbox" data-pick="${i}" ${e.ignore?'':'checked'}></td><td><input class="field" data-psub="${i}" value="${esc(e.subject)}"></td><td><input class="field" data-pname="${i}" value="${esc(e.name)}"></td><td>${filled} 筆${invalid.length?`｜<span style="color:#9f1239;font-weight:800">${invalid.length} 筆錯誤</span>`:''}${errText}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+};
+$('saveExcelExams').onclick=()=>{
+  const c=currentClass();
+  if(!parsedExcel.length){alert('請先貼上 Excel 成績並按「辨識並預覽」。');return;}
+  parsedExcel.forEach((e,i)=>{ e.subject=document.querySelector(`[data-psub="${i}"]`)?.value.trim()||e.subject; e.name=document.querySelector(`[data-pname="${i}"]`)?.value.trim()||e.name; });
+  const chosen=parsedExcel.filter((e,i)=>document.querySelector(`[data-pick="${i}"]`)?.checked);
+  if(!chosen.length){alert('目前沒有勾選任何要匯入的考試。');return;}
+  const invalidChosen=chosen.filter(e=>e.scores.some(s=>s.value!==''&&!s.valid));
+  if(invalidChosen.length){
+    alert('勾選的考試中有非數字成績，請修正 Excel 後重新貼上並預覽。');
+    return;
+  }
+  const date=$('excelDate').value||today();
+  chosen.forEach(e=>{
+    const scores=c.students.map((s,i)=>({seat:s.seat,name:s.name,value:String(e.scores[i]?.value??'').trim()}));
+    c.exams.push({date,subject:e.subject,name:e.name,scores});
+  });
+  app.examDate=date; parsedExcel=[]; save(); toast('✓ 成績已儲存'); show('dash');
+};
+
+function renderOverview(){
+  const c=currentClass(); if(!c)return;
+  app.ovStudents=(app.ovStudents||[]).filter(seat=>c.students.some(s=>s.seat===seat));
+  const subs=[...new Set(c.exams.map(e=>e.subject).filter(Boolean))].sort();
+  const current=$('overviewSubject').value;
+  $('overviewSubject').innerHTML='<option value="">全部科目</option>'+subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  if(subs.includes(current)) $('overviewSubject').value=current;
+  updateOverviewStudentButton();
+  $('overviewStudentBtn').onclick=openOverviewStudentPicker;
+  renderOverviewControls(); drawOverview();
+  $('overviewSubject').onchange=drawOverview;
+}
+
+function updateOverviewStudentButton(){
+  const c=currentClass(); if(!c)return;
+  const sel=app.ovStudents||[];
+  if(!sel.length){
+    $('overviewStudentBtn').textContent='全班 ▾';
+  }else if(sel.length===1){
+    const s=c.students.find(x=>x.seat===sel[0]);
+    $('overviewStudentBtn').textContent=s?`${s.seat}號 ${s.name} ▾`:'已選1人 ▾';
+  }else{
+    $('overviewStudentBtn').textContent=`已選 ${sel.length} 人 ▾`;
+  }
+}
+function openOverviewStudentPicker(){
+  const c=currentClass(); if(!c)return;
+  const selected=new Set(app.ovStudents||[]);
+  const allMode=selected.size===0;
+  openModal(`<div class="head"><div><h2 style="margin:0">選擇學生</h2><div class="small">可選單一學生或同時選擇多位學生</div></div><button class="btn" data-close-modal>×</button></div>
+  <div class="actions">
+    <button class="btn soft" id="ovPickAll">↺ 回到全班</button>
+    <button class="btn" id="ovPickClear">清除勾選</button>
+  </div>
+  <div class="student-picker-grid">${c.students.map(s=>`<label class="student-pick"><input type="checkbox" data-ov-student="${esc(s.seat)}" ${!allMode&&selected.has(s.seat)?'checked':''}><span><b>${esc(s.seat)}號</b> ${esc(s.name)}</span></label>`).join('')}</div>
+  <div class="actions" style="margin-top:14px"><button class="btn" data-close-modal>取消</button><button class="btn primary" id="applyOvStudents">套用</button></div>`);
+  $('ovPickAll').onclick=()=>{
+    app.ovStudents=[];
+    save();
+    closeModal();
+    updateOverviewStudentButton();
+    drawOverview();
+    toast('✓ 已切回全班');
+  };
+  $('ovPickClear').onclick=()=>{
+    document.querySelectorAll('[data-ov-student]').forEach(x=>x.checked=false);
+  };
+  document.querySelectorAll('[data-ov-student]').forEach(x=>x.onchange=()=>{});
+  $('applyOvStudents').onclick=()=>{
+    const picked=[...document.querySelectorAll('[data-ov-student]:checked')].map(x=>x.dataset.ovStudent);
+    if(!picked.length){alert('請至少選擇一位學生；若要恢復預設，請按「全班」。');return;}
+    app.ovStudents=picked;
+    save();closeModal();updateOverviewStudentButton();drawOverview();
+  };
+}
+
+document.querySelectorAll('[data-ov-range]').forEach(b=>b.onclick=()=>{
+  const next=b.dataset.ovRange;
+  app.ovRange=next;
+  if(next==='customN') app.ovCount='';
+  if(next==='customD'){app.ovStart='';app.ovEnd='';}
+  save(); renderOverviewControls(); drawOverview();
+});
+function renderOverviewControls(){
+  document.querySelectorAll('[data-ov-range]').forEach(x=>x.classList.toggle('active',x.dataset.ovRange===app.ovRange));
+  if(app.ovRange==='customN'){
+    $('overviewRangeControls').innerHTML=`<div class="actions"><label>最近次數<input id="ovCountInput" type="number" min="1" class="field" value="${app.ovCount||''}" placeholder="請輸入次數"></label><button class="btn soft" id="applyOvCount">套用</button></div>`;
+    $('applyOvCount').onclick=()=>{
+      const n=Number($('ovCountInput').value);
+      if(!Number.isFinite(n)||n<1){alert('請輸入至少 1 次。');return;}
+      app.ovCount=Math.floor(n);save();drawOverview();
+    };
+  }else if(app.ovRange==='customD'){
+    $('overviewRangeControls').innerHTML=`<div class="actions"><label>開始日期<input id="ovStartInput" type="date" class="field" value="${app.ovStart}"></label><label>結束日期<input id="ovEndInput" type="date" class="field" value="${app.ovEnd}"></label><button class="btn soft" id="applyOvDate">套用</button></div>`;
+    $('applyOvDate').onclick=()=>{
+      const s=$('ovStartInput').value,e=$('ovEndInput').value;
+      if(!s||!e){alert('請選擇開始日期與結束日期。');return;}
+      if(s>e){alert('開始日期不能晚於結束日期。');return;}
+      app.ovStart=s;app.ovEnd=e;save();drawOverview();
+    };
+  }else{
+    $('overviewRangeControls').innerHTML='';
+  }
+}
+function drawOverview(){
+  const c=currentClass(); if(!c)return;
+  let ex=[...c.exams].sort((a,b)=>b.date.localeCompare(a.date));
+  const sub=$('overviewSubject').value; if(sub) ex=ex.filter(e=>e.subject===sub);
+  if(app.ovRange==='n10'){
+    ex=ex.slice(0,10);
+    $('overviewRangeLabel').textContent=`目前顯示：最近10次${sub?`｜${sub}`:''}`;
+  }else if(app.ovRange==='d14'){
+    const d=new Date(); d.setDate(d.getDate()-13); const start=d.toISOString().slice(0,10);
+    ex=ex.filter(e=>e.date>=start&&e.date<=today());
+    $('overviewRangeLabel').textContent=`目前顯示：最近2週${sub?`｜${sub}`:''}`;
+  }else if(app.ovRange==='customN'){
+    if(!app.ovCount){
+      ex=[];
+      $('overviewRangeLabel').textContent='請重新設定自訂次數';
+    }else{
+      ex=ex.slice(0,Number(app.ovCount));
+      $('overviewRangeLabel').textContent=`目前顯示：最近 ${app.ovCount} 次${sub?`｜${sub}`:''}`;
+    }
+  }else if(app.ovRange==='customD'){
+    if(!app.ovStart||!app.ovEnd){
+      ex=[];
+      $('overviewRangeLabel').textContent='請重新設定自訂日期區間';
+    }else{
+      ex=ex.filter(e=>e.date>=app.ovStart&&e.date<=app.ovEnd);
+      $('overviewRangeLabel').textContent=`目前區間：${dateSlash(app.ovStart)} ～ ${dateSlash(app.ovEnd)}${sub?`｜${sub}`:''}`;
+    }
+  }else if(app.ovRange==='all'){
+    $('overviewRangeLabel').textContent=`目前顯示：全部歷史考試${sub?`｜${sub}`:''}`;
+  }
+  const selectedStudents=(app.ovStudents&&app.ovStudents.length)?c.students.filter(st=>app.ovStudents.includes(st.seat)):c.students;
+  $('overviewTable').innerHTML=ex.length?`<table class="sticky-table"><thead><tr><th>座號</th><th>姓名</th>${ex.map(e=>`<th>${esc(e.subject)}<br><span class="small">${esc(e.name)}<br>${dateSlash(e.date)}</span></th>`).join('')}</tr></thead><tbody>${selectedStudents.map(st=>`<tr><td>${esc(st.seat)}</td><td>${esc(st.name)}</td>${ex.map(e=>{const s=e.scores.find(x=>x.seat===st.seat);if(!s||String(s.value).trim()==='')return '<td>—</td>';const v=Number(s.value),a=avg(e),low=Number.isFinite(v)&&a!==null&&v<a;return `<td>${low?`<span class="score-low">${esc(s.value)}</span>`:esc(s.value)}</td>`}).join('')}</tr>`).join('')}<tr><td></td><td><b>平均</b></td>${ex.map(e=>`<td><b>${fmt(avg(e))}</b></td>`).join('')}</tr></tbody></table>`:`<div class="empty-state"><span class="eicon">📄</span>這個範圍目前沒有成績資料。</div>`;
+}
+
+function renderRecords(){
+  const c=currentClass(); if(!c)return;
+  const subs=[...new Set(c.exams.map(e=>e.subject).filter(Boolean))].sort();
+  $('recordSubject').innerHTML='<option value="">全部科目</option>'+subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  ['recordStart','recordEnd','recordSubject','recordKey','recordSort'].forEach(id=>$(id).oninput=drawRecords);
+  $('clearRecordFilters').onclick=()=>{
+    $('recordStart').value='';$('recordEnd').value='';$('recordSubject').value='';$('recordKey').value='';$('recordSort').value='desc';drawRecords();
+  };
+  drawRecords();
+}
+function drawRecords(){
+  const c=currentClass(); if(!c)return;
+  let ex=c.exams.map((e,i)=>({...e,_i:i}));
+  const s=$('recordStart').value,e=$('recordEnd').value,sub=$('recordSubject').value,key=$('recordKey').value.trim().toLowerCase(),sort=$('recordSort').value;
+  ex=ex.filter(x=>(!s||x.date>=s)&&(!e||x.date<=e)&&(!sub||x.subject===sub)&&(!key||x.name.toLowerCase().includes(key)));
+  ex.sort((a,b)=>sort==='desc'?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
+  $('recordList').innerHTML=ex.length?ex.map(x=>`<div class="manage-row"><div><b>${dateSlash(x.date)}｜${esc(x.subject)}｜${esc(x.name)}</b><div class="small">有成績人數 ${validNumbers(x).length}人｜平均 ${fmt(avg(x))}</div></div><div class="actions"><button class="btn" data-view="${x._i}">查看</button><button class="btn" data-edit="${x._i}">編輯</button><button class="btn danger" data-delete="${x._i}">刪除</button></div></div>`).join(''):`<div class="empty-state card"><span class="eicon">🔎</span>沒有符合條件的考試。</div>`;
+  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>openExamView(+b.dataset.view));
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openExamEdit(+b.dataset.edit));
+  document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>confirmDeleteExam(+b.dataset.delete));
+}
+function openExamView(i){
+  const c=currentClass(),e=c.exams[i]; if(!e)return;
+  openModal(`<div class="head"><div><h2 style="margin:0">${esc(e.subject)}｜${esc(e.name)}</h2><div class="small">${dateSlash(e.date)}</div></div><button class="btn" data-close-modal>×</button></div>
+  <div class="tablewrap"><table><thead><tr><th>座號</th><th>姓名</th><th>成績</th></tr></thead><tbody>${e.scores.map(s=>{const has=String(s.value).trim()!=='';const v=Number(s.value),a=avg(e),low=has&&Number.isFinite(v)&&a!==null&&v<a;return `<tr><td>${esc(s.seat)}</td><td>${esc(s.name)}</td><td>${has?(low?`<span class="score-low">${esc(s.value)}</span>`:esc(s.value)):'—'}</td></tr>`}).join('')}<tr><td></td><td><b>平均</b></td><td><b>${fmt(avg(e))}</b></td></tr></tbody></table></div>`);
+}
+function openExamEdit(i){
+  const c=currentClass(),e=c.exams[i]; if(!e)return;
+  openModal(`<div class="head"><h2 style="margin:0">編輯考試</h2><button class="btn" data-close-modal>×</button></div>
+  <div class="grid3"><label>日期<input id="editDate" type="date" class="field" value="${e.date}"></label><label>科目<input id="editSubject" class="field" value="${esc(e.subject)}"></label><label>考試名稱<input id="editName" class="field" value="${esc(e.name)}"></label></div>
+  <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>座號</th><th>姓名</th><th>成績</th></tr></thead><tbody>${e.scores.map((s,j)=>`<tr><td>${esc(s.seat)}</td><td>${esc(s.name)}</td><td><input class="field edit-score" data-j="${j}" value="${esc(s.value)}"></td></tr>`).join('')}</tbody></table></div>
+  <div class="actions" style="margin-top:12px"><button class="btn primary" id="saveExamEdit">儲存修改</button></div>`);
+  bindEnterJump('.edit-score');
+  $('saveExamEdit').onclick=()=>{
+    const scores=[...document.querySelectorAll('.edit-score')].map((el,j)=>({...e.scores[j],value:el.value.trim()}));
+    if(scores.some(s=>s.value!==''&&!Number.isFinite(Number(s.value)))){alert('成績只能輸入數字或留空。');return;}
+    e.date=$('editDate').value;e.subject=$('editSubject').value.trim();e.name=$('editName').value.trim();e.scores=scores;
+    save();closeModal();toast('✓ 修改已儲存');renderRecords();
+  };
+}
+function confirmDeleteExam(i){
+  const c=currentClass(),e=c.exams[i]; if(!e)return;
+  openModal(`<h2>確定要刪除這次考試嗎？</h2><p><b>${dateSlash(e.date)}｜${esc(e.subject)}｜${esc(e.name)}</b></p><p class="small">刪除後整場考試與其成績都會移除。</p><div class="actions"><button class="btn" data-close-modal>取消</button><button class="btn danger" id="confirmDeleteExam">確定刪除</button></div>`);
+  $('confirmDeleteExam').onclick=()=>{c.exams.splice(i,1);save();closeModal();toast('考試已刪除');renderRecords();};
+}
+
+function renderStudents(){
+  const c=currentClass(); if(!c)return;
+  $('studentTable').innerHTML=`<div class="small" style="margin-bottom:8px"><span class="inline-note">共 ${c.students.length} 位學生</span></div><table><thead><tr><th>座號</th><th>姓名</th><th>學號</th><th>身分證後4碼</th><th>操作</th></tr></thead><tbody>${c.students.map((s,i)=>`<tr><td>${esc(s.seat)}</td><td>${esc(s.name)}</td><td>${esc(s.account)}</td><td>${esc(s.pass)}</td><td><div class="actions"><button class="btn" data-stu-edit="${i}">編輯</button><button class="btn danger" data-stu-del="${i}">刪除</button></div></td></tr>`).join('')}</tbody></table>`;
+  document.querySelectorAll('[data-stu-edit]').forEach(b=>b.onclick=()=>editStudent(+b.dataset.stuEdit));
+  document.querySelectorAll('[data-stu-del]').forEach(b=>b.onclick=()=>deleteStudent(+b.dataset.stuDel));
+}
+$('saveStudentPaste').onclick=()=>{
+  const c=currentClass(),rows=parseStudentRows($('studentPaste').value),res=mergeStudents(c,rows);
+  if(!res.ok){
+    if(res.needsConfirm){
+      confirmDuplicateStudentMerge(c,res,()=>{renderStudents();$('studentPaste').value='';});
+      return;
+    }
+    alert(res.msg);return;
+  }
+  save();renderStudents();$('studentPaste').value='';toast('✓ 學生資料已儲存');
+};
+$('addStudent').onclick=()=>{
+  const c=currentClass();
+  const seat=normalizeSeat($('addSeat').value.trim());
+  const rawPass=$('addPass').value.trim();
+  const pass=normalizePass(rawPass);
+  const r={seat,name:$('addName').value.trim(),account:$('addAccount').value.trim(),pass:pass===null?'':pass};
+  if(!r.seat||!r.name){alert('座號與姓名必填，且座號需為數字。');return;}
+  if(rawPass!=='' && pass===null){alert('身分證後4碼格式不正確，請輸入 1～4 位數字。');return;}
+  if(c.students.some(s=>s.seat===r.seat)){alert('此座號已存在。');return;}
+  if(r.account&&c.students.some(s=>s.account===r.account)){alert('此學號已被其他學生使用。');return;}
+  c.students.push(r);c.students.sort((a,b)=>Number(a.seat)-Number(b.seat));save();renderStudents();toast('✓ 學生已新增');
+  ['addSeat','addName','addAccount','addPass'].forEach(id=>$(id).value='');
+};
+function editStudent(i){
+  const c=currentClass(),s=c.students[i];
+  openModal(`<div class="head"><h2 style="margin:0">編輯學生資料</h2><button class="btn" data-close-modal>×</button></div>
+  <div class="grid2"><label>座號<input id="esSeat" class="field" value="${esc(s.seat)}" disabled></label><label>姓名<input id="esName" class="field" value="${esc(s.name)}"></label><label>學號<input id="esAccount" class="field" value="${esc(s.account)}"></label><label>身分證後4碼<input id="esPass" class="field" value="${esc(s.pass)}"></label></div>
+  <div class="actions" style="margin-top:12px"><button class="btn primary" id="saveStuEdit">儲存修改</button></div>`);
+  $('saveStuEdit').onclick=()=>{
+    const account=$('esAccount').value.trim();
+    const rawPass=$('esPass').value.trim();
+    const pass=normalizePass(rawPass);
+    if(account&&c.students.some((x,j)=>j!==i&&x.account===account)){alert('此學號已被其他學生使用。');return;}
+    if(rawPass!=='' && pass===null){alert('身分證後4碼格式不正確，請輸入 1～4 位數字。');return;}
+    s.name=$('esName').value.trim();s.account=account;s.pass=pass===null?'':pass;save();closeModal();renderStudents();toast('✓ 學生資料已更新');
+  };
+}
+function deleteStudent(i){
+  const c=currentClass(),s=c.students[i];
+  openModal(`<h2>將學生移出目前班級？</h2><p><b>${esc(s.seat)}號 ${esc(s.name)}</b></p><p class="small">歷史考試中的既有成績仍會保留。</p><div class="actions"><button class="btn" data-close-modal>取消</button><button class="btn danger" id="confirmDelStu">確定移除</button></div>`);
+  $('confirmDelStu').onclick=()=>{c.students.splice(i,1);save();closeModal();renderStudents();toast('學生已移除');};
+}
+
+function renderSettings(){
+  const c=currentClass();
+  if(c){
+    $('nextTermBtn').textContent=String(c.term)==='2'?'第二學期後請新增班級':'建立下一學期';
+  }
+  $('activeClassList').innerHTML=activeClasses().map(x=>`<div class="manage-row"><div><b>${esc(x.name)}</b><div class="small">${esc(x.year)}學年度｜第${x.term}學期</div></div><div class="actions"><button class="btn" data-switch-class="${x.id}">${x.id===app.currentClassId?'目前使用':'切換'}</button><button class="btn" data-archive="${x.id}">封存</button></div></div>`).join('')||'<div class="small">沒有使用中的班級。</div>';
+  $('archivedClassList').innerHTML=archivedClasses().map(x=>`<div class="manage-row"><div><b>${esc(x.name)}</b><div class="small">${esc(x.year)}學年度｜第${x.term}學期</div></div><div class="actions"><button class="btn" data-view-arch="${x.id}">查看</button><button class="btn" data-reactivate="${x.id}">重新啟用</button><button class="btn danger" data-delete-class="${x.id}">永久刪除</button></div></div>`).join('')||'<div class="small">目前沒有已封存班級。</div>';
+  document.querySelectorAll('[data-switch-class]').forEach(b=>b.onclick=()=>{app.currentClassId=b.dataset.switchClass;app.ovStudents=[];save();show('dash');});
+  document.querySelectorAll('[data-archive]').forEach(b=>b.onclick=()=>archiveClass(b.dataset.archive));
+  document.querySelectorAll('[data-reactivate]').forEach(b=>b.onclick=()=>reactivateClass(b.dataset.reactivate));
+  document.querySelectorAll('[data-delete-class]').forEach(b=>b.onclick=()=>deleteClass(b.dataset.deleteClass));
+  document.querySelectorAll('[data-view-arch]').forEach(b=>b.onclick=()=>viewArchivedClass(b.dataset.viewArch));
+}
+$('emptyNewClassBtn')?.addEventListener('click',()=>openNewClassModal(false));
+$('emptyManageBtn')?.addEventListener('click',()=>show('settings'));
+$('newClassBtn').onclick=()=>openNewClassModal(false);
+$('nextTermBtn').onclick=()=>{
+  const c=currentClass();
+  if(!c)return;
+  if(String(c.term)==='2'){
+    openModal(`<div class="head"><div><h2 style="margin:0">本學年度已到第二學期</h2><div class="small">下一學年度班級名稱可能不同</div></div><button class="btn" data-close-modal>×</button></div>
+    <div class="notice soft-blue">第二學期之後不直接建立「下一學期」。請使用「新增班級」，重新設定新學年度、班級名稱與學期。</div>
+    <div class="actions" style="margin-top:14px"><button class="btn" data-close-modal>取消</button><button class="btn primary" id="goNewClassFromTerm2">＋ 新增班級</button></div>`);
+    $('goNewClassFromTerm2').onclick=()=>{closeModal();openNewClassModal(false);};
+    return;
+  }
+  openNewClassModal(true);
+};
+function openNewClassModal(copyStudents){
+  const c=currentClass();
+  const suggestedYear=c?c.year:'';
+  const suggestedTerm=copyStudents && c ? (String(c.term)==='1'?'2':'1') : '1';
+  const suggestedName=c?c.name:'';
+  openModal(`<div class="head"><h2 style="margin:0">${copyStudents?'建立下一學期':'新增班級'}</h2><button class="btn" data-close-modal>×</button></div>
+  <div class="grid3"><label>班級名稱<input id="ncName" class="field" value="${esc(suggestedName)}"></label><label>學年度<input id="ncYear" class="field" value="${esc(suggestedYear)}"></label><label>學期<select id="ncTerm" class="field"><option value="1" ${suggestedTerm==='1'?'selected':''}>第一學期</option><option value="2" ${suggestedTerm==='2'?'selected':''}>第二學期</option></select></label></div>
+  ${copyStudents?'<div class="notice" style="margin-top:12px">會複製目前學生名單，但不複製考試與成績。</div>':''}
+  <div class="actions" style="margin-top:12px"><button class="btn primary" id="saveNewClass">建立</button></div>`);
+  $('saveNewClass').onclick=()=>{
+    const name=$('ncName').value.trim(),year=$('ncYear').value.trim(),term=$('ncTerm').value;
+    if(!name||!year){alert('請填寫班級名稱與學年度。');return;}
+    const duplicate=app.classes.some(x=>
+      String(x.name||'').trim()===name &&
+      String(x.year||'').trim()===year &&
+      String(x.term||'')===String(term)
+    );
+    if(duplicate){
+      alert('這個班級學期已經存在。');
+      return;
+    }
+    const nc={id:uuid(),name,year,term,archived:false,students:copyStudents&&c?JSON.parse(JSON.stringify(c.students)):[],exams:[]};
+    app.classes.push(nc);app.currentClassId=nc.id;save();closeModal();toast('✓ 班級已建立');show(copyStudents?'dash':'students');
+  };
+}
+function archiveClass(id){
+  const c=app.classes.find(x=>x.id===id); if(!c)return;
+  openModal(`<div class="head"><div><h2 style="margin:0">封存班級</h2><div class="small">資料會完整保留</div></div><button class="btn" data-close-modal>×</button></div>
+  <div class="notice soft-blue">
+    確定要封存 <b>${esc(c.name)}｜${esc(c.year)}學年度第${c.term}學期</b> 嗎？<br>
+    封存不會刪除學生、考試或成績資料，之後可隨時重新啟用。
+  </div>
+  <div class="actions" style="margin-top:14px">
+    <button class="btn" data-close-modal>取消</button>
+    <button class="btn primary" id="confirmArchiveClass">確定封存</button>
+  </div>`);
+  $('confirmArchiveClass').onclick=()=>{
+    c.archived=true;
+    if(app.currentClassId===id){
+      const next=activeClasses()[0];
+      app.currentClassId=next?next.id:null;
+    }
+    save();closeModal();toast('✓ 班級已封存');
+    if(app.currentClassId){
+      show('settings');
+    }else{
+      updateHeader();
+      show('noActiveClass');
+    }
+  };
+}
+function viewArchivedClass(id){
+  const c=app.classes.find(x=>x.id===id); if(!c)return;
+  openModal(`<div class="head"><div><h2 style="margin:0">${esc(c.name)}</h2><div class="small">${esc(c.year)}學年度｜第${c.term}學期｜已封存</div></div><button class="btn" data-close-modal>×</button></div>
+  <div class="grid2">
+    <div class="card stat blue"><div class="small">學生人數</div><div class="num">${c.students.length}</div></div>
+    <div class="card stat violet"><div class="small">已登記考試數</div><div class="num">${c.exams.length}</div></div>
+  </div>
+  <div class="notice" style="margin-top:12px">封存班級目前為查看狀態。如需繼續新增或修改資料，請先「重新啟用」。</div>
+  <div class="actions" style="margin-top:14px"><button class="btn primary" id="reactivateFromView">重新啟用</button></div>`);
+  $('reactivateFromView').onclick=()=>{closeModal();reactivateClass(id);};
+}
+function reactivateClass(id){
+  const c=app.classes.find(x=>x.id===id); if(!c)return;
+  c.archived=false;
+  if(!app.currentClassId) app.currentClassId=id;
+  save();renderSettings();updateHeader();toast('✓ 班級已重新啟用');
+}
+function deleteClass(id){
+  const c=app.classes.find(x=>x.id===id); if(!c)return;
+  openModal(`<div class="danger-zone card pad"><h2 style="color:#991b1b">永久刪除班級</h2><p>將永久刪除 <b>${esc(c.name)}｜${esc(c.year)}學年度第${c.term}學期</b> 的學生、考試與所有成績資料。</p><p><b>此操作無法復原。</b></p><div class="actions"><button class="btn" data-close-modal>取消</button><button class="btn danger" id="confirmDeleteClass">確定永久刪除</button></div></div>`);
+  $('confirmDeleteClass').onclick=()=>{
+    app.classes=app.classes.filter(x=>x.id!==id);
+    if(app.currentClassId===id){const next=activeClasses()[0]||app.classes[0];app.currentClassId=next?next.id:null;}
+    save();closeModal();toast('班級已永久刪除'); if(app.currentClassId)show('settings'); else show('firstSetup');
+  };
+}
+
+function openModal(html){
+  $('genericModalCard').innerHTML=html;$('genericModal').classList.add('open');
+  $('genericModal').querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=closeModal);
+}
+function closeModal(){$('genericModal').classList.remove('open');}
+
+$('helpBtn').onclick=()=>{$('overlay').classList.add('open');$('helpDrawer').classList.add('open');};
+$('closeHelp').onclick=$('overlay').onclick=()=>{$('overlay').classList.remove('open');$('helpDrawer').classList.remove('open');};
+
+$('demoBtn').onclick=()=>{
+  const choice=prompt('輸入 1 載入測試資料；輸入 2 清除全部測試資料。');
+  if(choice==='2'){localStorage.removeItem('grade_app_v4');location.reload();return;}
+  if(choice!=='1')return;
+  const students=Array.from({length:42},(_,i)=>({seat:String(i+1),name:`學生${String(i+1).padStart(2,'0')}`,account:`115${String(i+1).padStart(3,'0')}`,pass:String(1000+i).slice(-4)}));
+  const dates=['2026-09-01','2026-08-31','2026-08-30','2026-08-28','2026-08-27','2026-08-25','2026-08-22','2026-08-20','2026-08-18','2026-08-15','2026-08-12','2026-08-10'];
+  const subs=['數學','英文','國文','數學','英文','國文','數學','英文','國文','數學','英文','國文'];
+  const exams=dates.map((date,k)=>({
+    date,subject:subs[k],name:`測驗 ${k+1}`,scores:students.map((s,i)=>({seat:s.seat,name:s.name,value:(i+k)%11===0?'':String(Math.max(0,Math.min(100,55+((i*7+k*11)%46))))}))
+  }));
+  app={...app,logged:true,currentClassId:'CLS-DEMO01',classes:[
+    {id:'CLS-DEMO01',name:'高二智班',year:'115',term:'1',archived:false,students,exams},
+    {id:'CLS-DEMO02',name:'高二智班',year:'114',term:'2',archived:true,students:students.slice(0,40),exams:exams.slice(5)}
+  ],page:'dash',lowRange:'n10',lowSort:'seat',lowExpanded:false,ovRange:'n10',ovStudents:[],ovCount:20,examDate:today()};
+  save();show('dash');toast('✓ 已載入測試資料');
+};
+
+load();
+migrateData();
+if(app.logged){
+  if(!app.classes.length){
+    show('firstSetup');
+  }else{
+    const active=activeClasses();
+    if(app.currentClassId && !active.some(c=>c.id===app.currentClassId)) app.currentClassId=null;
+    if(!app.currentClassId && active.length) app.currentClassId=active[0].id;
+    if(!active.length){
+      show(app.page==='settings'?'settings':'noActiveClass');
+    }else{
+      show(app.page==='login'?'dash':app.page);
+    }
+  }
+}else show('login');
+updateHeader();
+</script>
+</body>
+</html>
