@@ -54,13 +54,76 @@
     const data = await response.json();
     const files = Array.isArray(data.files) ? data.files : [];
 
-    // If a duplicate somehow exists, use the oldest app-owned index rather than creating another.
     files.sort((a, b) => String(a.createdTime || '').localeCompare(String(b.createdTime || '')));
     return files[0] || null;
   }
 
+  async function ensureIndexSchema(fileId) {
+    const metaResponse = await authFetch(
+      `${SHEETS_API}/${encodeURIComponent(fileId)}?fields=sheets.properties`
+    );
+    const meta = await metaResponse.json();
+    const sheets = Array.isArray(meta?.sheets) ? meta.sheets : [];
+    if (!sheets.length) throw new Error('索引試算表存在，但沒有可用的工作表。');
+
+    let target = sheets.find(s => s?.properties?.title === INDEX_SHEET_NAME)?.properties || null;
+
+    if (!target) {
+      const firstSheet = sheets[0]?.properties;
+      if (!firstSheet) throw new Error('無法讀取索引試算表工作表結構。');
+
+      await authFetch(`${SHEETS_API}/${encodeURIComponent(fileId)}:batchUpdate`, {
+        method: 'POST',
+        body: JSON.stringify({
+          requests: [
+            {
+              updateSheetProperties: {
+                properties: {
+                  sheetId: firstSheet.sheetId,
+                  title: INDEX_SHEET_NAME,
+                  gridProperties: { frozenRowCount: 1 }
+                },
+                fields: 'title,gridProperties.frozenRowCount'
+              }
+            }
+          ]
+        })
+      });
+      target = { ...firstSheet, title: INDEX_SHEET_NAME };
+    } else if ((target.gridProperties?.frozenRowCount || 0) !== 1) {
+      await authFetch(`${SHEETS_API}/${encodeURIComponent(fileId)}:batchUpdate`, {
+        method: 'POST',
+        body: JSON.stringify({
+          requests: [
+            {
+              updateSheetProperties: {
+                properties: {
+                  sheetId: target.sheetId,
+                  gridProperties: { frozenRowCount: 1 }
+                },
+                fields: 'gridProperties.frozenRowCount'
+              }
+            }
+          ]
+        })
+      });
+    }
+
+    const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!A1:G1`);
+    await authFetch(
+      `${SHEETS_API}/${encodeURIComponent(fileId)}/values/${range}?valueInputOption=RAW`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          range: `${INDEX_SHEET_NAME}!A1:G1`,
+          majorDimension: 'ROWS',
+          values: [INDEX_HEADERS]
+        })
+      }
+    );
+  }
+
   async function createIndexSpreadsheet() {
-    // Create through Drive so appProperties can be written at creation time.
     const createResponse = await authFetch(
       `${DRIVE_API}/files?fields=id,name,createdTime,modifiedTime,appProperties`,
       {
@@ -76,46 +139,7 @@
       }
     );
     const file = await createResponse.json();
-
-    // Read the first sheet ID, then rename it to a stable name.
-    const metaResponse = await authFetch(
-      `${SHEETS_API}/${encodeURIComponent(file.id)}?fields=sheets.properties`
-    );
-    const meta = await metaResponse.json();
-    const firstSheet = meta?.sheets?.[0]?.properties;
-    if (!firstSheet) throw new Error('索引試算表建立成功，但無法讀取工作表結構。');
-
-    await authFetch(`${SHEETS_API}/${encodeURIComponent(file.id)}:batchUpdate`, {
-      method: 'POST',
-      body: JSON.stringify({
-        requests: [
-          {
-            updateSheetProperties: {
-              properties: {
-                sheetId: firstSheet.sheetId,
-                title: INDEX_SHEET_NAME,
-                gridProperties: { frozenRowCount: 1 }
-              },
-              fields: 'title,gridProperties.frozenRowCount'
-            }
-          }
-        ]
-      })
-    });
-
-    const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!A1:G1`);
-    await authFetch(
-      `${SHEETS_API}/${encodeURIComponent(file.id)}/values/${range}?valueInputOption=RAW`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({
-          range: `${INDEX_SHEET_NAME}!A1:G1`,
-          majorDimension: 'ROWS',
-          values: [INDEX_HEADERS]
-        })
-      }
-    );
-
+    await ensureIndexSchema(file.id);
     return { ...file, createdNow: true };
   }
 
@@ -125,7 +149,12 @@
     }
 
     let file = await findIndexSpreadsheet();
-    if (!file) file = await createIndexSpreadsheet();
+    if (!file) {
+      file = await createIndexSpreadsheet();
+    } else {
+      // Repair older/partially-created index files instead of assuming they are complete.
+      await ensureIndexSchema(file.id);
+    }
 
     const result = {
       id: file.id,
@@ -141,6 +170,7 @@
   window.GoogleDriveStore = {
     ensureTeacherIndex,
     findIndexSpreadsheet,
+    ensureIndexSchema,
     indexFileName: INDEX_FILE_NAME,
     indexSheetName: INDEX_SHEET_NAME
   };
