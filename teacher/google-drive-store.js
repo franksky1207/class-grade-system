@@ -199,18 +199,23 @@
   }
 
   function parseExams(examRows, gradeRows, studentCount) {
+    let repairNeeded = false;
     const gradeGroups = new Map();
+
+    // 成績資料只能附著在考試資料中的既有考試；同一場考試、同一座號只保留最後一筆。
     for (const r of gradeRows.slice(1)) {
       const date=text(r[0]), subject=text(r[1]), name=text(r[2]);
       if (!date && !subject && !name) continue;
       const key=examKey(date,subject,name);
-      if (!gradeGroups.has(key)) gradeGroups.set(key, []);
-      gradeGroups.get(key).push({ seat:text(r[3]), name:text(r[4]), value:text(r[5]) });
+      if (!gradeGroups.has(key)) gradeGroups.set(key, new Map());
+      const bySeat = gradeGroups.get(key);
+      const seat = text(r[3]);
+      if (bySeat.has(seat)) repairNeeded = true;
+      bySeat.set(seat, { seat, name:text(r[4]), value:text(r[5]) });
     }
 
     const exams = [];
     const seen = new Set();
-    let repairNeeded = false;
 
     for (const r of examRows.slice(1)) {
       const date=text(r[0]), subject=text(r[1]), name=text(r[2]);
@@ -221,22 +226,23 @@
         continue;
       }
       seen.add(key);
-      const scores = gradeGroups.get(key) || [];
-      // With students in the class, an exam row with zero matching grade rows is a stale orphan.
+
+      const bySeat = gradeGroups.get(key);
+      const scores = bySeat ? [...bySeat.values()] : [];
+
+      // 班級已有學生時，完全沒有任何成績列的考試視為殘留空殼。
       if (studentCount > 0 && !scores.length) {
         repairNeeded = true;
+        gradeGroups.delete(key);
         continue;
       }
-      exams.push({ date, subject, name, scores:[...scores] });
+
+      exams.push({ date, subject, name, scores });
       gradeGroups.delete(key);
     }
 
-    // Recover grade-bearing exams if their exam-list row was accidentally omitted.
-    for (const [key,scores] of gradeGroups.entries()) {
-      const [date,subject,name] = key.split('\u0001');
-      exams.push({date,subject,name,scores:[...scores]});
-      repairNeeded = true;
-    }
+    // 剩下的成績群組代表考試已不存在的孤兒成績，絕對不能把考試復活。
+    if (gradeGroups.size) repairNeeded = true;
 
     return { exams, repairNeeded };
   }
