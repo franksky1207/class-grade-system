@@ -40,8 +40,7 @@
     if (!rows.length) return;
     const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!A2:G${rows.length + 1}`);
     await authFetch(`${SHEETS_API}/${encodeURIComponent(indexId)}/values/${range}?valueInputOption=RAW`, {
-      method: 'PUT',
-      body: JSON.stringify({ majorDimension: 'ROWS', values: rows })
+      method: 'PUT', body: JSON.stringify({ majorDimension: 'ROWS', values: rows })
     });
   }
 
@@ -92,12 +91,12 @@
 
   async function setArchived(c, archived) {
     if (!c) throw new Error('找不到班級。');
-    const before = !!c.archived;
+    const previousArchived = !archived;
     await writeClassSettings(c, archived);
     try {
       await updateIndexArchived(c, archived);
     } catch (err) {
-      try { await writeClassSettings(c, before); } catch (_) {}
+      try { await writeClassSettings(c, previousArchived); } catch (_) {}
       throw err;
     }
     return { archived: !!archived };
@@ -113,8 +112,7 @@
     const rowNumber = at + 2;
     const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!G${rowNumber}`);
     await authFetch(`${SHEETS_API}/${encodeURIComponent(index.id)}/values/${range}?valueInputOption=RAW`, {
-      method:'PUT',
-      body:JSON.stringify({ majorDimension:'ROWS', values:[[new Date().toISOString()]] })
+      method:'PUT', body:JSON.stringify({ majorDimension:'ROWS', values:[[new Date().toISOString()]] })
     });
     return { updated:true };
   }
