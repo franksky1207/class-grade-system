@@ -71,10 +71,26 @@
     } catch (_) {}
   }
 
+  function resetOverviewStudentDefaults() {
+    try {
+      if (typeof app === 'undefined') return;
+      app.ovStudents = [];
+      if (typeof save === 'function') save();
+    } catch (_) {}
+  }
+
   function installLoginViewDefaults() {
     document.addEventListener('click', (event) => {
       const target = event.target?.closest?.('button');
-      if (target?.id === 'loginBtn') resetLowAverageDefaults();
+      if (!target) return;
+      if (target.id === 'loginBtn') {
+        resetLowAverageDefaults();
+        resetOverviewStudentDefaults();
+        return;
+      }
+      if (target.dataset?.page === 'overview') {
+        resetOverviewStudentDefaults();
+      }
     }, true);
   }
 
@@ -306,7 +322,6 @@
     const loginBtn = document.getElementById('loginBtn');
     if (!loginBtn) return;
 
-    // 不再背景呼叫 Google OAuth。只有 sessionStorage 裡仍有未過期 token 才直接走原本登入載入流程。
     setTimeout(() => {
       if (!loginBtn.disabled) loginBtn.click();
     }, 0);
