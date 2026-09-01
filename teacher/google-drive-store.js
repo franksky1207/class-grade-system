@@ -6,6 +6,7 @@
   const CLASS_SHEETS = ['班級設定','學生資料','考試資料','成績資料'];
   const DRIVE_API = 'https://www.googleapis.com/drive/v3';
   const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+  const classEnsureLocks = new Map();
 
   async function authFetch(url, options = {}) {
     const token = await window.GoogleAuth.getAccessToken();
@@ -25,6 +26,7 @@
   function truthy(v) { return /^(true|1|yes)$/i.test(text(v)); }
   function classIdFromSpreadsheetId(id) { return `G-${String(id || '').slice(-18)}`; }
   function examKey(date, subject, name) { return `${text(date)}\u0001${text(subject)}\u0001${text(name)}`; }
+  function classIdentity(c) { return `${text(c?.name)}\u0001${text(c?.year)}\u0001${text(c?.term)}`; }
 
   async function findIndexSpreadsheet() {
     const q = [
@@ -125,19 +127,44 @@
     return id;
   }
 
-  async function ensureLocalClasses(classes) {
-    const index = window.classGradeSystemIndex || await ensureTeacherIndex();
-    const rows = await readIndexRows(index.id);
-    let changed = false;
-    for (const c of (classes || [])) {
-      if (c.spreadsheetId) continue;
+  async function ensureOneClass(c) {
+    if (c.spreadsheetId) return false;
+    const key = classIdentity(c);
+    if (classEnsureLocks.has(key)) {
+      const id = await classEnsureLocks.get(key);
+      if (!c.spreadsheetId && id) c.spreadsheetId = id;
+      return true;
+    }
+
+    const task = (async () => {
+      const index = window.classGradeSystemIndex || await ensureTeacherIndex();
+      const rows = await readIndexRows(index.id);
       const hit = rows.find(r=>text(r[0])===text(c.name) && text(r[1])===text(c.year) && text(r[2])===text(c.term));
-      if (hit?.[3]) { c.spreadsheetId = hit[3]; changed = true; continue; }
+      if (hit?.[3]) {
+        c.spreadsheetId = hit[3];
+        return hit[3];
+      }
+
       const spreadsheetId = await createClassSpreadsheet(c);
       await appendIndexRow(index.id, c, spreadsheetId);
       c.spreadsheetId = spreadsheetId;
-      rows.push([c.name,c.year,String(c.term),spreadsheetId,String(!!c.archived)]);
-      changed = true;
+      return spreadsheetId;
+    })();
+
+    classEnsureLocks.set(key, task);
+    try {
+      await task;
+      return true;
+    } finally {
+      classEnsureLocks.delete(key);
+    }
+  }
+
+  async function ensureLocalClasses(classes) {
+    let changed = false;
+    for (const c of (classes || [])) {
+      if (c.spreadsheetId) continue;
+      if (await ensureOneClass(c)) changed = true;
     }
     return { changed };
   }
