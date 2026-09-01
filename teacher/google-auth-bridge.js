@@ -168,6 +168,27 @@
     }, true);
   }
 
+  function rememberCurrentClass() {
+    const c = (typeof currentClass === 'function') ? currentClass() : null;
+    return c ? {
+      spreadsheetId:c.spreadsheetId || '',
+      name:c.name || '',
+      year:String(c.year || ''),
+      term:String(c.term || '')
+    } : null;
+  }
+
+  function chooseCurrentClass(classes, previous) {
+    if (!classes.length) return null;
+    let hit = null;
+    if (previous?.spreadsheetId) hit = classes.find(c => c.spreadsheetId === previous.spreadsheetId) || null;
+    if (!hit && previous) {
+      hit = classes.find(c => c.name === previous.name && String(c.year) === previous.year && String(c.term) === previous.term) || null;
+    }
+    if (!hit) hit = classes.find(c => !c.archived) || classes[0];
+    return hit;
+  }
+
   async function handleGoogleLogin() {
     const btn = document.getElementById('loginBtn');
     const oldText = btn?.textContent || '';
@@ -177,20 +198,34 @@
     try {
       const result = await window.GoogleAuth.signIn();
       window.googleTeacherAccount = result.user;
+      const previousClass = rememberCurrentClass();
+      const localClassesBeforeGoogle = Array.isArray(app.classes) ? app.classes : [];
 
       if (btn) btn.textContent = '正在準備 Google Drive…';
       await loadDriveStoreScript();
       const indexInfo = await window.GoogleDriveStore.ensureTeacherIndex();
 
-      if (app.classes?.length) {
-        if (btn) btn.textContent = '正在建立班級資料…';
-        const migration = await window.GoogleDriveStore.ensureLocalClasses(app.classes);
+      // One-time migration safeguard: only when Google index has no classes yet.
+      let indexRows = await window.GoogleDriveStore.readIndexRows(indexInfo.id);
+      const hasGoogleClasses = indexRows.some(r => String(r?.[3] || '').trim());
+      if (!hasGoogleClasses && localClassesBeforeGoogle.length) {
+        if (btn) btn.textContent = '正在搬移舊班級資料…';
+        const migration = await window.GoogleDriveStore.ensureLocalClasses(localClassesBeforeGoogle);
         if (migration.changed) save();
       }
 
-      console.info('Google Drive / Sheets 初始化完成。', indexInfo);
+      if (btn) btn.textContent = '正在載入班級資料…';
+      const loaded = await window.GoogleDriveStore.loadAllClassesFromGoogle();
+
+      // From this point on, Google Sheets is the source of truth for class data.
+      app.classes = loaded.classes;
+      const selected = chooseCurrentClass(app.classes, previousClass);
+      app.currentClassId = selected?.id || null;
+      app.ovStudents = [];
       app.logged = true;
       save();
+
+      console.info(`已從 Google 載入 ${app.classes.length} 個班級。`, indexInfo);
       if (!app.classes.length) show('firstSetup'); else show('dash');
     } catch (err) {
       console.error(err);
