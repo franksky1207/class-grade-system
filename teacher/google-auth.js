@@ -9,14 +9,13 @@
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/spreadsheets'
   ].join(' ');
-  const REMEMBER_LOGIN_KEY = 'class-grade-system-google-login-known';
+  const SESSION_KEY = 'class-grade-system-google-session';
 
   let tokenClient = null;
   let accessToken = null;
   let expiresAt = 0;
   let currentUser = null;
   let gisReadyPromise = null;
-  let autoRestoreRunning = false;
 
   function localToday() {
     const d = new Date();
@@ -27,7 +26,6 @@
   }
 
   function applyProductionUiCleanup() {
-    // 正式版不再顯示早期 UI 測試工具。
     const demoBtn = document.getElementById('demoBtn');
     if (demoBtn) demoBtn.remove();
 
@@ -46,7 +44,6 @@
       if (loginBtn) loginBtn.textContent = '使用 Google 帳號登入';
     }
 
-    // 清除畫面中仍殘留的「測試版」字樣，但不碰使用者資料內容。
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -86,8 +83,6 @@
     const sessionKey = 'class-grade-system-entry-day';
     const sessionDay = sessionStorage.getItem(sessionKey);
 
-    // 新的一個本地日曆日（或新的瀏覽器工作階段）時，預設回到今天。
-    // 同一天內若老師手動改日期，app.examDate 會照原本設計持續沿用。
     if (sessionDay !== currentDay) {
       sessionStorage.setItem(sessionKey, currentDay);
       try {
@@ -120,7 +115,6 @@
       }
     });
 
-    // 如果網站跨過午夜仍保持開啟，回到分頁時也重新確認日期。
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) syncGradeEntryDefaultDate();
     });
@@ -169,6 +163,43 @@
     return res.json();
   }
 
+  function clearStoredSession() {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+  }
+
+  function saveStoredSession() {
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        accessToken,
+        expiresAt,
+        currentUser
+      }));
+    } catch (_) {}
+  }
+
+  function restoreStoredSession() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (!raw) return false;
+      const saved = JSON.parse(raw);
+      if (!saved?.accessToken || !saved?.currentUser || !Number(saved?.expiresAt)) {
+        clearStoredSession();
+        return false;
+      }
+      if (Date.now() >= Number(saved.expiresAt)) {
+        clearStoredSession();
+        return false;
+      }
+      accessToken = saved.accessToken;
+      expiresAt = Number(saved.expiresAt);
+      currentUser = saved.currentUser;
+      return true;
+    } catch (_) {
+      clearStoredSession();
+      return false;
+    }
+  }
+
   async function signIn(options = {}) {
     if (accessToken && Date.now() < expiresAt && currentUser) {
       return { user: currentUser, accessToken };
@@ -188,17 +219,16 @@
           const expiresIn = Number(response.expires_in || 3600);
           expiresAt = Date.now() + Math.max(0, expiresIn - 60) * 1000;
           currentUser = await fetchUserInfo(accessToken);
-          localStorage.setItem(REMEMBER_LOGIN_KEY, '1');
+          saveStoredSession();
           options.onSuccess?.({ user: currentUser, accessToken });
           resolve({ user: currentUser, accessToken });
         } catch (err) {
+          clearStoredSession();
           options.onError?.(err);
           reject(err);
         }
       };
 
-      // 不再每次新開網站都強制 prompt=consent。
-      // 第一次需要權限時 Google 仍會正常詢問；已授權帳號之後不會被強迫重複同意。
       const requestOptions = {};
       if (Object.prototype.hasOwnProperty.call(options, 'prompt')) {
         requestOptions.prompt = options.prompt;
@@ -226,7 +256,7 @@
     accessToken = null;
     expiresAt = 0;
     currentUser = null;
-    localStorage.removeItem(REMEMBER_LOGIN_KEY);
+    clearStoredSession();
 
     if (tokenToRevoke && window.google?.accounts?.oauth2) {
       google.accounts.oauth2.revoke(tokenToRevoke, () => {});
@@ -270,30 +300,16 @@
     });
   }
 
-  async function tryAutoRestore() {
-    if (autoRestoreRunning) return;
-    if (localStorage.getItem(REMEMBER_LOGIN_KEY) !== '1') return;
+  function tryAutoRestore() {
+    if (!restoreStoredSession()) return;
 
     const loginBtn = document.getElementById('loginBtn');
     if (!loginBtn) return;
 
-    autoRestoreRunning = true;
-    const oldText = loginBtn.textContent;
-    loginBtn.disabled = true;
-    loginBtn.textContent = '正在恢復 Google 登入…';
-
-    try {
-      await signIn({ prompt: '' });
-      // 原本的 bridge 仍負責正式讀取 Drive / Sheets；因 token 已存在，這次不會再要求授權。
-      loginBtn.disabled = false;
-      loginBtn.click();
-    } catch (_) {
-      // 瀏覽器或 Google 若不允許無互動取得 token，就安靜回到正常登入按鈕。
-      loginBtn.disabled = false;
-      loginBtn.textContent = oldText || '使用 Google 帳號登入';
-    } finally {
-      autoRestoreRunning = false;
-    }
+    // 不再背景呼叫 Google OAuth。只有 sessionStorage 裡仍有未過期 token 才直接走原本登入載入流程。
+    setTimeout(() => {
+      if (!loginBtn.disabled) loginBtn.click();
+    }, 0);
   }
 
   window.GoogleAuth = {
@@ -314,6 +330,5 @@
   installLocalDateFix();
   installLogoutControl();
 
-  // bridge 會在下一個 script 載入；延後一個 event loop，讓正式登入處理器先完成安裝。
   setTimeout(tryAutoRestore, 0);
 })();
