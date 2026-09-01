@@ -92,6 +92,17 @@
   function install() {
     const btn = document.getElementById('loginBtn');
     if (!btn || !window.GoogleAuth) return;
+
+    // v17 used a localStorage flag as a simulated login. Do not trust that flag anymore.
+    // OAuth access tokens are intentionally kept only in memory at this stage, so every
+    // fresh page load must pass through Google sign-in before Drive/Sheets can be used.
+    if (typeof app !== 'undefined') {
+      app.logged = false;
+      save();
+      show('login');
+      updateHeader();
+    }
+
     btn.textContent = '使用 Google 帳號登入';
     const subtitle = document.querySelector('#login .subtitle');
     if (subtitle) subtitle.textContent = '使用 Google 帳號登入，班級資料將連接至你的 Google Drive／Google Sheets。';
