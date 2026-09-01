@@ -99,6 +99,29 @@
     ]));
   }
 
+  function examKey(e) {
+    return [String(e?.date || '').trim(), String(e?.subject || '').trim(), String(e?.name || '').trim()].join('\u0001');
+  }
+
+  function removeDuplicateExamsKeepLatest(c) {
+    if (!c?.exams?.length) return 0;
+    const seen = new Set();
+    const keptReversed = [];
+    let removed = 0;
+    for (let i = c.exams.length - 1; i >= 0; i--) {
+      const e = c.exams[i];
+      const key = examKey(e);
+      if (seen.has(key)) {
+        removed++;
+        continue;
+      }
+      seen.add(key);
+      keptReversed.push(e);
+    }
+    if (removed) c.exams = keptReversed.reverse();
+    return removed;
+  }
+
   function queueStudentSync(c) {
     studentSyncQueue = studentSyncQueue.then(async () => {
       setSaveStatus('儲存中…');
@@ -151,6 +174,21 @@
     }, true);
   }
 
+  function installExcelExamDedupBridge() {
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('button');
+      if (!target || target.id !== 'saveExcelExams') return;
+      const c = (typeof currentClass === 'function') ? currentClass() : null;
+      if (!c) return;
+      setTimeout(() => {
+        const removed = removeDuplicateExamsKeepLatest(c);
+        if (!removed) return;
+        if (typeof save === 'function') save();
+        if (typeof toast === 'function') toast(`✓ 已更新既有考試（避免 ${removed} 筆重複）`);
+      }, 0);
+    }, true);
+  }
+
   function installExamSaveBridge() {
     const examActionIds = new Set([
       'saveManualExam','saveExcelExams','saveExamEdit','confirmDeleteExam'
@@ -168,27 +206,6 @@
     }, true);
   }
 
-  function rememberCurrentClass() {
-    const c = (typeof currentClass === 'function') ? currentClass() : null;
-    return c ? {
-      spreadsheetId:c.spreadsheetId || '',
-      name:c.name || '',
-      year:String(c.year || ''),
-      term:String(c.term || '')
-    } : null;
-  }
-
-  function chooseCurrentClass(classes, previous) {
-    if (!classes.length) return null;
-    let hit = null;
-    if (previous?.spreadsheetId) hit = classes.find(c => c.spreadsheetId === previous.spreadsheetId) || null;
-    if (!hit && previous) {
-      hit = classes.find(c => c.name === previous.name && String(c.year) === previous.year && String(c.term) === previous.term) || null;
-    }
-    if (!hit) hit = classes.find(c => !c.archived) || classes[0];
-    return hit;
-  }
-
   async function handleGoogleLogin() {
     const btn = document.getElementById('loginBtn');
     const oldText = btn?.textContent || '';
@@ -198,34 +215,29 @@
     try {
       const result = await window.GoogleAuth.signIn();
       window.googleTeacherAccount = result.user;
-      const previousClass = rememberCurrentClass();
-      const localClassesBeforeGoogle = Array.isArray(app.classes) ? app.classes : [];
 
       if (btn) btn.textContent = '正在準備 Google Drive…';
       await loadDriveStoreScript();
       const indexInfo = await window.GoogleDriveStore.ensureTeacherIndex();
 
-      // One-time migration safeguard: only when Google index has no classes yet.
-      let indexRows = await window.GoogleDriveStore.readIndexRows(indexInfo.id);
-      const hasGoogleClasses = indexRows.some(r => String(r?.[3] || '').trim());
-      if (!hasGoogleClasses && localClassesBeforeGoogle.length) {
-        if (btn) btn.textContent = '正在搬移舊班級資料…';
-        const migration = await window.GoogleDriveStore.ensureLocalClasses(localClassesBeforeGoogle);
+      const indexRows = await window.GoogleDriveStore.readIndexRows(indexInfo.id);
+      if (!indexRows.length && app.classes?.length) {
+        if (btn) btn.textContent = '正在建立班級資料…';
+        const migration = await window.GoogleDriveStore.ensureLocalClasses(app.classes);
         if (migration.changed) save();
       }
 
       if (btn) btn.textContent = '正在載入班級資料…';
-      const loaded = await window.GoogleDriveStore.loadAllClassesFromGoogle();
-
-      // From this point on, Google Sheets is the source of truth for class data.
+      const loaded = await window.GoogleDriveStore.loadAllClassesFromGoogle(indexInfo.id);
       app.classes = loaded.classes;
-      const selected = chooseCurrentClass(app.classes, previousClass);
-      app.currentClassId = selected?.id || null;
-      app.ovStudents = [];
+      const active = app.classes.filter(c => !c.archived);
+      if (!app.classes.some(c => c.id === app.currentClassId)) {
+        app.currentClassId = (active[0] || app.classes[0] || {}).id || null;
+      }
+
+      console.info('Google Drive / Sheets 初始化完成。', indexInfo);
       app.logged = true;
       save();
-
-      console.info(`已從 Google 載入 ${app.classes.length} 個班級。`, indexInfo);
       if (!app.classes.length) show('firstSetup'); else show('dash');
     } catch (err) {
       console.error(err);
@@ -238,6 +250,7 @@
   function install() {
     applyProductionLabels();
     installStudentSaveBridge();
+    installExcelExamDedupBridge();
     installExamSaveBridge();
     const btn = document.getElementById('loginBtn');
     if (!btn || !window.GoogleAuth) return;
