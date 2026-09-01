@@ -21,6 +21,11 @@
     return response;
   }
 
+  function text(v) { return String(v ?? '').trim(); }
+  function truthy(v) { return /^(true|1|yes)$/i.test(text(v)); }
+  function classIdFromSpreadsheetId(id) { return `G-${String(id || '').slice(-18)}`; }
+  function examKey(date, subject, name) { return `${text(date)}\u0001${text(subject)}\u0001${text(name)}`; }
+
   async function findIndexSpreadsheet() {
     const q = [
       "trashed = false",
@@ -46,9 +51,10 @@
     const meta = await (await authFetch(`${SHEETS_API}/${encodeURIComponent(fileId)}?fields=sheets.properties`)).json();
     const sheets = Array.isArray(meta?.sheets) ? meta.sheets : [];
     if (!sheets.length) throw new Error('索引試算表存在，但沒有可用的工作表。');
-    let target = sheets.find(s=>s?.properties?.title===INDEX_SHEET_NAME)?.properties || null;
+    const target = sheets.find(s=>s?.properties?.title===INDEX_SHEET_NAME)?.properties || null;
     if (!target) {
       const first = sheets[0]?.properties;
+      if (!first) throw new Error('無法讀取班級索引工作表。');
       await authFetch(`${SHEETS_API}/${encodeURIComponent(fileId)}:batchUpdate`, {
         method:'POST',
         body:JSON.stringify({ requests:[{ updateSheetProperties:{ properties:{ sheetId:first.sheetId, title:INDEX_SHEET_NAME, gridProperties:{ frozenRowCount:1 } }, fields:'title,gridProperties.frozenRowCount' } }] })
@@ -137,7 +143,7 @@
 
     for (const c of (classes || [])) {
       if (c.spreadsheetId) continue;
-      const hit = rows.find(r=>String(r[0]||'').trim()===String(c.name||'').trim() && String(r[1]||'').trim()===String(c.year||'').trim() && String(r[2]||'').trim()===String(c.term||'').trim());
+      const hit = rows.find(r=>text(r[0])===text(c.name) && text(r[1])===text(c.year) && text(r[2])===text(c.term));
       if (hit?.[3]) {
         c.spreadsheetId = hit[3];
         changed = true;
@@ -152,10 +158,111 @@
     return { changed };
   }
 
+  async function getSheetTitles(spreadsheetId) {
+    const data = await (await authFetch(`${SHEETS_API}/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties.title`)).json();
+    return (data.sheets || []).map(s=>s?.properties?.title).filter(Boolean);
+  }
+
+  async function batchReadClassRanges(spreadsheetId) {
+    const params = new URLSearchParams();
+    params.append('ranges', `'班級設定'!A:B`);
+    params.append('ranges', `'學生資料'!A:D`);
+    params.append('ranges', `'考試資料'!A:C`);
+    params.append('ranges', `'成績資料'!A:F`);
+    params.set('majorDimension','ROWS');
+    const data = await (await authFetch(`${SHEETS_API}/${encodeURIComponent(spreadsheetId)}/values:batchGet?${params.toString()}`)).json();
+    const ranges = Array.isArray(data.valueRanges) ? data.valueRanges : [];
+    return {
+      settings:ranges[0]?.values || [],
+      students:ranges[1]?.values || [],
+      exams:ranges[2]?.values || [],
+      grades:ranges[3]?.values || []
+    };
+  }
+
+  function parseSettings(rows) {
+    const out = {};
+    for (const row of rows.slice(1)) {
+      const key = text(row[0]);
+      if (key) out[key] = text(row[1]);
+    }
+    return out;
+  }
+
+  function parseStudents(rows) {
+    return rows.slice(1).map(r=>({
+      seat:text(r[0]),
+      name:text(r[1]),
+      account:text(r[2]),
+      pass:text(r[3])
+    })).filter(s=>s.seat || s.name || s.account || s.pass).sort((a,b)=>Number(a.seat)-Number(b.seat));
+  }
+
+  function parseExams(examRows, gradeRows) {
+    const exams = examRows.slice(1).map(r=>({
+      date:text(r[0]), subject:text(r[1]), name:text(r[2]), scores:[]
+    })).filter(e=>e.date || e.subject || e.name);
+    const map = new Map();
+    for (const e of exams) map.set(examKey(e.date,e.subject,e.name), e);
+
+    for (const r of gradeRows.slice(1)) {
+      const date=text(r[0]), subject=text(r[1]), name=text(r[2]);
+      if (!date && !subject && !name) continue;
+      const key=examKey(date,subject,name);
+      let e=map.get(key);
+      if (!e) {
+        // Recover a grade-bearing exam even if the exam list row was accidentally omitted.
+        e={date,subject,name,scores:[]};
+        exams.push(e); map.set(key,e);
+      }
+      e.scores.push({ seat:text(r[3]), name:text(r[4]), value:text(r[5]) });
+    }
+    return exams;
+  }
+
+  async function readClassSpreadsheet(indexRow) {
+    const spreadsheetId = text(indexRow[3]);
+    if (!spreadsheetId) throw new Error('班級索引中有資料缺少 Spreadsheet ID。');
+
+    const titles = await getSheetTitles(spreadsheetId);
+    const missing = CLASS_SHEETS.filter(name=>!titles.includes(name));
+    if (missing.length) throw new Error(`班級資料需要修復：缺少「${missing.join('、')}」工作表。`);
+
+    const data = await batchReadClassRanges(spreadsheetId);
+    const settings = parseSettings(data.settings);
+    const name = settings['班級名稱'] || text(indexRow[0]);
+    const year = settings['學年度'] || text(indexRow[1]);
+    const term = settings['學期'] || text(indexRow[2]);
+    const archived = indexRow[4] !== undefined && text(indexRow[4]) !== '' ? truthy(indexRow[4]) : truthy(settings.archived);
+
+    return {
+      id:classIdFromSpreadsheetId(spreadsheetId),
+      name,
+      year,
+      term,
+      archived,
+      spreadsheetId,
+      students:parseStudents(data.students),
+      exams:parseExams(data.exams,data.grades)
+    };
+  }
+
+  async function loadAllClassesFromGoogle() {
+    const index = window.classGradeSystemIndex || await ensureTeacherIndex();
+    const rows = await readIndexRows(index.id);
+    const usable = rows.filter(r=>text(r[0]) || text(r[1]) || text(r[2]) || text(r[3]));
+    const classes = [];
+    for (const row of usable) classes.push(await readClassSpreadsheet(row));
+    return { classes, indexRows:usable };
+  }
+
   window.GoogleDriveStore = {
     ensureTeacherIndex,
     ensureLocalClasses,
     createClassSpreadsheet,
+    readIndexRows,
+    readClassSpreadsheet,
+    loadAllClassesFromGoogle,
     indexFileName:INDEX_FILE_NAME,
     indexSheetName:INDEX_SHEET_NAME
   };
