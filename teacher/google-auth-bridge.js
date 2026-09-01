@@ -3,10 +3,12 @@
   let driveStoreReadyPromise = null;
   let studentSyncReadyPromise = null;
   let examSyncReadyPromise = null;
+  let classLifecycleReadyPromise = null;
   let studentSyncQueue = Promise.resolve();
   let examSyncRunning = false;
   let examSyncDirty = false;
   let latestExamSyncClass = null;
+  let pendingPermanentDeleteClassId = null;
 
   function showLoginError(message) {
     const login = document.getElementById('login');
@@ -86,6 +88,20 @@
       document.head.appendChild(script);
     });
     return examSyncReadyPromise;
+  }
+
+  function loadClassLifecycleScript() {
+    if (window.GoogleClassLifecycle) return Promise.resolve();
+    if (classLifecycleReadyPromise) return classLifecycleReadyPromise;
+    classLifecycleReadyPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'teacher/google-class-lifecycle.js';
+      script.async = true;
+      script.onload = () => window.GoogleClassLifecycle ? resolve() : reject(new Error('班級 Google 管理模組載入失敗。'));
+      script.onerror = () => reject(new Error('班級 Google 管理模組載入失敗。'));
+      document.head.appendChild(script);
+    });
+    return classLifecycleReadyPromise;
   }
 
   function studentFingerprint(c) {
@@ -235,6 +251,58 @@
     }, true);
   }
 
+  function installPermanentClassDeleteBridge() {
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('button');
+      if (!target) return;
+
+      if (target.dataset?.deleteClass) {
+        pendingPermanentDeleteClassId = target.dataset.deleteClass;
+        return;
+      }
+
+      if (target.id !== 'confirmDeleteClass') return;
+      const id = pendingPermanentDeleteClassId;
+      const c = (typeof app !== 'undefined') ? app.classes?.find(x => x.id === id) : null;
+      if (!c) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      const oldText = target.textContent;
+      target.disabled = true;
+      target.textContent = '正在永久刪除…';
+      setSaveStatus('儲存中…');
+
+      (async () => {
+        try {
+          await loadDriveStoreScript();
+          await loadClassLifecycleScript();
+          await window.GoogleClassLifecycle.permanentDeleteClass(c);
+
+          app.classes = app.classes.filter(x => x.id !== id);
+          if (app.currentClassId === id) {
+            const next = (typeof activeClasses === 'function' ? activeClasses()[0] : null) || app.classes[0];
+            app.currentClassId = next ? next.id : null;
+          }
+          pendingPermanentDeleteClassId = null;
+          if (typeof save === 'function') save();
+          if (typeof closeModal === 'function') closeModal();
+          setSaveStatus('✓ 已儲存');
+          if (typeof toast === 'function') toast('班級已永久刪除');
+          if (app.currentClassId) show('settings'); else show('firstSetup');
+        } catch (err) {
+          console.error('永久刪除班級失敗：', err);
+          setSaveStatus('⚠ 儲存失敗');
+          target.disabled = false;
+          target.textContent = oldText || '確定永久刪除';
+          if (typeof toast === 'function') toast(`⚠ 永久刪除失敗：${err?.message || '請稍後再試'}`);
+        }
+      })();
+    }, true);
+  }
+
   async function handleGoogleLogin() {
     const btn = document.getElementById('loginBtn');
     const oldText = btn?.textContent || '';
@@ -285,6 +353,7 @@
     installStudentSaveBridge();
     installExcelExamDedupBridge();
     installExamSaveBridge();
+    installPermanentClassDeleteBridge();
     const btn = document.getElementById('loginBtn');
     if (!btn || !window.GoogleAuth) return;
 
