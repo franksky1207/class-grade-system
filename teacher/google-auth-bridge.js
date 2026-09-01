@@ -172,6 +172,19 @@
     drainExamSync();
   }
 
+  async function repairLoadedExamData(classes) {
+    const repairs = (classes || []).filter(c => c?._googleNeedsExamRepair);
+    if (!repairs.length) return 0;
+    await loadExamSyncScript();
+    setSaveStatus('正在修復 Google 成績資料…');
+    for (const c of repairs) {
+      await window.GoogleExamSync.syncExamsAndGrades(c);
+      delete c._googleNeedsExamRepair;
+    }
+    setSaveStatus('✓ 已儲存');
+    return repairs.length;
+  }
+
   function installStudentSaveBridge() {
     const studentActionIds = new Set([
       'saveFirstStudents','saveStudentPaste','addStudent','saveStuEdit','confirmDelStu','confirmStudentMerge'
@@ -246,6 +259,10 @@
       if (btn) btn.textContent = '正在載入班級資料…';
       const loaded = await window.GoogleDriveStore.loadAllClassesFromGoogle(indexInfo.id);
       app.classes = loaded.classes;
+
+      const repairCount = await repairLoadedExamData(app.classes);
+      if (repairCount) console.info(`已自動修復 ${repairCount} 個班級的考試／成績殘留資料。`);
+
       const active = app.classes.filter(c => !c.archived);
       if (!app.classes.some(c => c.id === app.currentClassId)) {
         app.currentClassId = (active[0] || app.classes[0] || {}).id || null;
