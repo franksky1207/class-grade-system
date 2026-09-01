@@ -198,26 +198,47 @@
     })).filter(s=>s.seat || s.name || s.account || s.pass).sort((a,b)=>Number(a.seat)-Number(b.seat));
   }
 
-  function parseExams(examRows, gradeRows) {
-    const exams = examRows.slice(1).map(r=>({
-      date:text(r[0]), subject:text(r[1]), name:text(r[2]), scores:[]
-    })).filter(e=>e.date || e.subject || e.name);
-    const map = new Map();
-    for (const e of exams) map.set(examKey(e.date,e.subject,e.name), e);
-
+  function parseExams(examRows, gradeRows, studentCount) {
+    const gradeGroups = new Map();
     for (const r of gradeRows.slice(1)) {
       const date=text(r[0]), subject=text(r[1]), name=text(r[2]);
       if (!date && !subject && !name) continue;
       const key=examKey(date,subject,name);
-      let e=map.get(key);
-      if (!e) {
-        // Recover a grade-bearing exam even if the exam list row was accidentally omitted.
-        e={date,subject,name,scores:[]};
-        exams.push(e); map.set(key,e);
-      }
-      e.scores.push({ seat:text(r[3]), name:text(r[4]), value:text(r[5]) });
+      if (!gradeGroups.has(key)) gradeGroups.set(key, []);
+      gradeGroups.get(key).push({ seat:text(r[3]), name:text(r[4]), value:text(r[5]) });
     }
-    return exams;
+
+    const exams = [];
+    const seen = new Set();
+    let repairNeeded = false;
+
+    for (const r of examRows.slice(1)) {
+      const date=text(r[0]), subject=text(r[1]), name=text(r[2]);
+      if (!date && !subject && !name) continue;
+      const key=examKey(date,subject,name);
+      if (seen.has(key)) {
+        repairNeeded = true;
+        continue;
+      }
+      seen.add(key);
+      const scores = gradeGroups.get(key) || [];
+      // With students in the class, an exam row with zero matching grade rows is a stale orphan.
+      if (studentCount > 0 && !scores.length) {
+        repairNeeded = true;
+        continue;
+      }
+      exams.push({ date, subject, name, scores:[...scores] });
+      gradeGroups.delete(key);
+    }
+
+    // Recover grade-bearing exams if their exam-list row was accidentally omitted.
+    for (const [key,scores] of gradeGroups.entries()) {
+      const [date,subject,name] = key.split('\u0001');
+      exams.push({date,subject,name,scores:[...scores]});
+      repairNeeded = true;
+    }
+
+    return { exams, repairNeeded };
   }
 
   async function readClassSpreadsheet(indexRow) {
@@ -234,6 +255,8 @@
     const year = settings['學年度'] || text(indexRow[1]);
     const term = settings['學期'] || text(indexRow[2]);
     const archived = indexRow[4] !== undefined && text(indexRow[4]) !== '' ? truthy(indexRow[4]) : truthy(settings.archived);
+    const students = parseStudents(data.students);
+    const parsedExams = parseExams(data.exams,data.grades,students.length);
 
     return {
       id:classIdFromSpreadsheetId(spreadsheetId),
@@ -242,8 +265,9 @@
       term,
       archived,
       spreadsheetId,
-      students:parseStudents(data.students),
-      exams:parseExams(data.exams,data.grades)
+      students,
+      exams:parsedExams.exams,
+      _googleNeedsExamRepair:parsedExams.repairNeeded
     };
   }
 
