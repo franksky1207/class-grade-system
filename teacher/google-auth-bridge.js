@@ -1,6 +1,8 @@
 // Connect the frozen v17 teacher UI to Google OAuth and teacher-owned Google Drive data.
 (function () {
   let driveStoreReadyPromise = null;
+  let studentSyncReadyPromise = null;
+  let studentSyncQueue = Promise.resolve();
 
   function showLoginError(message) {
     const login = document.getElementById('login');
@@ -28,6 +30,11 @@
     if (headerMode) headerMode.textContent = '教師端';
   }
 
+  function setSaveStatus(text) {
+    const el = document.getElementById('saveStatus');
+    if (el) el.textContent = text;
+  }
+
   function loadDriveStoreScript() {
     if (window.GoogleDriveStore) return Promise.resolve();
     if (driveStoreReadyPromise) return driveStoreReadyPromise;
@@ -47,6 +54,59 @@
       document.head.appendChild(script);
     });
     return driveStoreReadyPromise;
+  }
+
+  function loadStudentSyncScript() {
+    if (window.GoogleStudentSync) return Promise.resolve();
+    if (studentSyncReadyPromise) return studentSyncReadyPromise;
+    studentSyncReadyPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'teacher/google-student-sync.js';
+      script.async = true;
+      script.onload = () => window.GoogleStudentSync ? resolve() : reject(new Error('學生資料同步模組載入失敗。'));
+      script.onerror = () => reject(new Error('學生資料同步模組載入失敗。'));
+      document.head.appendChild(script);
+    });
+    return studentSyncReadyPromise;
+  }
+
+  function studentFingerprint(c) {
+    return JSON.stringify((c?.students || []).map(s => [s.seat, s.name, s.account, s.pass]));
+  }
+
+  function queueStudentSync(c) {
+    studentSyncQueue = studentSyncQueue.then(async () => {
+      setSaveStatus('儲存中…');
+      try {
+        await loadDriveStoreScript();
+        await loadStudentSyncScript();
+        await window.GoogleStudentSync.syncStudents(c);
+        setSaveStatus('✓ 已儲存');
+      } catch (err) {
+        console.error('學生資料寫入 Google Sheets 失敗：', err);
+        setSaveStatus('⚠ 儲存失敗');
+        if (typeof toast === 'function') toast('⚠ Google Sheets 儲存失敗');
+      }
+    });
+    return studentSyncQueue;
+  }
+
+  function installStudentSaveBridge() {
+    const studentActionIds = new Set([
+      'saveFirstStudents','saveStudentPaste','addStudent','saveStuEdit','confirmDelStu','confirmStudentMerge'
+    ]);
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('button');
+      if (!target || !studentActionIds.has(target.id)) return;
+      const c = (typeof currentClass === 'function') ? currentClass() : null;
+      if (!c) return;
+      const before = studentFingerprint(c);
+      const force = target.id === 'saveFirstStudents';
+      setTimeout(() => {
+        const after = studentFingerprint(c);
+        if (force || before !== after) queueStudentSync(c);
+      }, 0);
+    }, true);
   }
 
   async function handleGoogleLogin() {
@@ -83,6 +143,7 @@
 
   function install() {
     applyProductionLabels();
+    installStudentSaveBridge();
     const btn = document.getElementById('loginBtn');
     if (!btn || !window.GoogleAuth) return;
 
