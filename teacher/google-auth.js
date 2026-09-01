@@ -16,6 +16,59 @@
   let currentUser = null;
   let gisReadyPromise = null;
 
+  function localToday() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function syncGradeEntryDefaultDate() {
+    const currentDay = localToday();
+    const sessionKey = 'class-grade-system-entry-day';
+    const sessionDay = sessionStorage.getItem(sessionKey);
+
+    // 新的一個本地日曆日（或新的瀏覽器工作階段）時，預設回到今天。
+    // 同一天內若老師手動改日期，app.examDate 會照原本設計持續沿用。
+    if (sessionDay !== currentDay) {
+      sessionStorage.setItem(sessionKey, currentDay);
+      try {
+        if (typeof app !== 'undefined') {
+          app.examDate = currentDay;
+          if (typeof save === 'function') save();
+        }
+      } catch (_) {}
+    }
+
+    try {
+      if (typeof app !== 'undefined') {
+        const value = app.examDate || currentDay;
+        const manualDate = document.getElementById('manualDate');
+        const excelDate = document.getElementById('excelDate');
+        if (manualDate) manualDate.value = value;
+        if (excelDate) excelDate.value = value;
+      }
+    } catch (_) {}
+  }
+
+  function installLocalDateFix() {
+    syncGradeEntryDefaultDate();
+
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('button');
+      if (!target) return;
+      if (target.dataset?.page === 'entry' || target.dataset?.entryMode) {
+        setTimeout(syncGradeEntryDefaultDate, 0);
+      }
+    });
+
+    // 如果網站跨過午夜仍保持開啟，回到分頁時也重新確認日期。
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) syncGradeEntryDefaultDate();
+    });
+  }
+
   function loadGisScript() {
     if (window.google?.accounts?.oauth2) return Promise.resolve();
     if (gisReadyPromise) return gisReadyPromise;
@@ -27,7 +80,6 @@
         existing.addEventListener('error', reject, { once: true });
         return;
       }
-
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
@@ -120,6 +172,9 @@
     getUser,
     isSignedIn,
     clientId: CLIENT_ID,
-    scopes: SCOPES
+    scopes: SCOPES,
+    localToday
   };
+
+  installLocalDateFix();
 })();
