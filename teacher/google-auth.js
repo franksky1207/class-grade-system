@@ -24,6 +24,41 @@
     return `${y}-${m}-${day}`;
   }
 
+  function applyProductionUiCleanup() {
+    // 正式版不再顯示早期 UI 測試工具。
+    const demoBtn = document.getElementById('demoBtn');
+    if (demoBtn) demoBtn.remove();
+
+    document.title = '班級成績管理系統';
+
+    const headerMode = document.querySelector('header .brand + .small');
+    if (headerMode) headerMode.textContent = '教師端';
+
+    const login = document.getElementById('login');
+    if (login) {
+      const subtitle = login.querySelector('.subtitle');
+      if (subtitle) {
+        subtitle.textContent = '使用 Google 帳號登入，班級資料將連接至你的 Google Drive / Google Sheets。';
+      }
+      const loginBtn = document.getElementById('loginBtn');
+      if (loginBtn) loginBtn.textContent = '使用 Google 帳號登入';
+    }
+
+    // 清除畫面中仍殘留的「測試版」字樣，但不碰使用者資料內容。
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      if (!node.parentElement) return;
+      if (['SCRIPT', 'STYLE'].includes(node.parentElement.tagName)) return;
+      if (node.nodeValue?.includes('測試版')) {
+        node.nodeValue = node.nodeValue
+          .replace(/教師端測試版/g, '教師端')
+          .replace(/測試版/g, '');
+      }
+    });
+  }
+
   function syncGradeEntryDefaultDate() {
     const currentDay = localToday();
     const sessionKey = 'class-grade-system-entry-day';
@@ -135,9 +170,13 @@
         }
       };
 
-      tokenClient.requestAccessToken({
-        prompt: options.prompt || (accessToken ? '' : 'consent')
-      });
+      // 不再每次新開網站都強制 prompt=consent。
+      // 第一次需要權限時 Google 仍會正常詢問；已授權帳號之後不會被強迫重複同意。
+      const requestOptions = {};
+      if (Object.prototype.hasOwnProperty.call(options, 'prompt')) {
+        requestOptions.prompt = options.prompt;
+      }
+      tokenClient.requestAccessToken(requestOptions);
     });
   }
 
@@ -176,5 +215,6 @@
     localToday
   };
 
+  applyProductionUiCleanup();
   installLocalDateFix();
 })();
