@@ -109,13 +109,14 @@
       });
     }
 
-    const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!A1:G1`);
+    const sheetRange = `'${INDEX_SHEET_NAME}'!A1:G1`;
+    const encodedRange = encodeURIComponent(sheetRange);
     await authFetch(
-      `${SHEETS_API}/${encodeURIComponent(fileId)}/values/${range}?valueInputOption=RAW`,
+      `${SHEETS_API}/${encodeURIComponent(fileId)}/values/${encodedRange}?valueInputOption=RAW`,
       {
         method: 'PUT',
         body: JSON.stringify({
-          range: `${INDEX_SHEET_NAME}!A1:G1`,
+          range: sheetRange,
           majorDimension: 'ROWS',
           values: [INDEX_HEADERS]
         })
