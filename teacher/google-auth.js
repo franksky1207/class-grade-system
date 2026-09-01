@@ -9,12 +9,14 @@
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/spreadsheets'
   ].join(' ');
+  const REMEMBER_LOGIN_KEY = 'class-grade-system-google-login-known';
 
   let tokenClient = null;
   let accessToken = null;
   let expiresAt = 0;
   let currentUser = null;
   let gisReadyPromise = null;
+  let autoRestoreRunning = false;
 
   function localToday() {
     const d = new Date();
@@ -168,6 +170,10 @@
   }
 
   async function signIn(options = {}) {
+    if (accessToken && Date.now() < expiresAt && currentUser) {
+      return { user: currentUser, accessToken };
+    }
+
     await init();
 
     return new Promise((resolve, reject) => {
@@ -182,6 +188,7 @@
           const expiresIn = Number(response.expires_in || 3600);
           expiresAt = Date.now() + Math.max(0, expiresIn - 60) * 1000;
           currentUser = await fetchUserInfo(accessToken);
+          localStorage.setItem(REMEMBER_LOGIN_KEY, '1');
           options.onSuccess?.({ user: currentUser, accessToken });
           resolve({ user: currentUser, accessToken });
         } catch (err) {
@@ -215,12 +222,78 @@
   }
 
   function signOut() {
-    if (accessToken && window.google?.accounts?.oauth2) {
-      google.accounts.oauth2.revoke(accessToken, () => {});
-    }
+    const tokenToRevoke = accessToken;
     accessToken = null;
     expiresAt = 0;
     currentUser = null;
+    localStorage.removeItem(REMEMBER_LOGIN_KEY);
+
+    if (tokenToRevoke && window.google?.accounts?.oauth2) {
+      google.accounts.oauth2.revoke(tokenToRevoke, () => {});
+    }
+  }
+
+  function installLogoutControl() {
+    const settings = document.getElementById('settings');
+    const settingsCard = settings?.querySelector(':scope > .card.pad');
+    if (!settingsCard || document.getElementById('googleLogoutPanel')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'googleLogoutPanel';
+    panel.className = 'card pad';
+    panel.style.marginTop = '14px';
+    panel.innerHTML = `
+      <div class="head" style="margin-bottom:0">
+        <div>
+          <h3 style="margin:0">Google 帳號</h3>
+          <div class="small" style="margin-top:4px">需要切換老師帳號或使用共用裝置時，可在這裡登出。</div>
+        </div>
+        <button class="btn" id="googleLogoutBtn">登出／切換 Google 帳號</button>
+      </div>`;
+    settingsCard.appendChild(panel);
+
+    document.getElementById('googleLogoutBtn')?.addEventListener('click', () => {
+      signOut();
+      try {
+        if (typeof app !== 'undefined') {
+          app.logged = false;
+          app.currentClassId = null;
+          app.classes = [];
+          app.page = 'login';
+          if (typeof save === 'function') save();
+        }
+        if (typeof show === 'function') show('login');
+        if (typeof updateHeader === 'function') updateHeader();
+      } catch (_) {
+        location.reload();
+      }
+    });
+  }
+
+  async function tryAutoRestore() {
+    if (autoRestoreRunning) return;
+    if (localStorage.getItem(REMEMBER_LOGIN_KEY) !== '1') return;
+
+    const loginBtn = document.getElementById('loginBtn');
+    if (!loginBtn) return;
+
+    autoRestoreRunning = true;
+    const oldText = loginBtn.textContent;
+    loginBtn.disabled = true;
+    loginBtn.textContent = '正在恢復 Google 登入…';
+
+    try {
+      await signIn({ prompt: '' });
+      // 原本的 bridge 仍負責正式讀取 Drive / Sheets；因 token 已存在，這次不會再要求授權。
+      loginBtn.disabled = false;
+      loginBtn.click();
+    } catch (_) {
+      // 瀏覽器或 Google 若不允許無互動取得 token，就安靜回到正常登入按鈕。
+      loginBtn.disabled = false;
+      loginBtn.textContent = oldText || '使用 Google 帳號登入';
+    } finally {
+      autoRestoreRunning = false;
+    }
   }
 
   window.GoogleAuth = {
@@ -232,10 +305,15 @@
     isSignedIn,
     clientId: CLIENT_ID,
     scopes: SCOPES,
-    localToday
+    localToday,
+    tryAutoRestore
   };
 
   applyProductionUiCleanup();
   installLoginViewDefaults();
   installLocalDateFix();
+  installLogoutControl();
+
+  // bridge 會在下一個 script 載入；延後一個 event loop，讓正式登入處理器先完成安裝。
+  setTimeout(tryAutoRestore, 0);
 })();
