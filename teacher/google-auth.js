@@ -59,6 +59,26 @@
     });
   }
 
+  function resetLowAverageDefaults() {
+    try {
+      if (typeof app === 'undefined') return;
+      app.lowRange = 'n10';
+      app.lowSort = 'seat';
+      app.lowExpanded = false;
+      app.lowCustomN = 10;
+      app.lowStart = '';
+      app.lowEnd = '';
+      if (typeof save === 'function') save();
+    } catch (_) {}
+  }
+
+  function installLoginViewDefaults() {
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('button');
+      if (target?.id === 'loginBtn') resetLowAverageDefaults();
+    }, true);
+  }
+
   function syncGradeEntryDefaultDate() {
     const currentDay = localToday();
     const sessionKey = 'class-grade-system-entry-day';
@@ -216,5 +236,6 @@
   };
 
   applyProductionUiCleanup();
+  installLoginViewDefaults();
   installLocalDateFix();
 })();
