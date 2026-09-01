@@ -2,7 +2,9 @@
 (function () {
   let driveStoreReadyPromise = null;
   let studentSyncReadyPromise = null;
+  let examSyncReadyPromise = null;
   let studentSyncQueue = Promise.resolve();
+  let examSyncQueue = Promise.resolve();
 
   function showLoginError(message) {
     const login = document.getElementById('login');
@@ -70,8 +72,31 @@
     return studentSyncReadyPromise;
   }
 
+  function loadExamSyncScript() {
+    if (window.GoogleExamSync) return Promise.resolve();
+    if (examSyncReadyPromise) return examSyncReadyPromise;
+    examSyncReadyPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'teacher/google-exam-sync.js';
+      script.async = true;
+      script.onload = () => window.GoogleExamSync ? resolve() : reject(new Error('考試與成績同步模組載入失敗。'));
+      script.onerror = () => reject(new Error('考試與成績同步模組載入失敗。'));
+      document.head.appendChild(script);
+    });
+    return examSyncReadyPromise;
+  }
+
   function studentFingerprint(c) {
     return JSON.stringify((c?.students || []).map(s => [s.seat, s.name, s.account, s.pass]));
+  }
+
+  function examFingerprint(c) {
+    return JSON.stringify((c?.exams || []).map(e => [
+      e.date,
+      e.subject,
+      e.name,
+      (e.scores || []).map(s => [s.seat, s.name, s.value])
+    ]));
   }
 
   function queueStudentSync(c) {
@@ -91,6 +116,23 @@
     return studentSyncQueue;
   }
 
+  function queueExamSync(c) {
+    examSyncQueue = examSyncQueue.then(async () => {
+      setSaveStatus('儲存中…');
+      try {
+        await loadDriveStoreScript();
+        await loadExamSyncScript();
+        await window.GoogleExamSync.syncExamsAndGrades(c);
+        setSaveStatus('✓ 已儲存');
+      } catch (err) {
+        console.error('考試／成績寫入 Google Sheets 失敗：', err);
+        setSaveStatus('⚠ 儲存失敗');
+        if (typeof toast === 'function') toast('⚠ Google Sheets 儲存失敗');
+      }
+    });
+    return examSyncQueue;
+  }
+
   function installStudentSaveBridge() {
     const studentActionIds = new Set([
       'saveFirstStudents','saveStudentPaste','addStudent','saveStuEdit','confirmDelStu','confirmStudentMerge'
@@ -105,6 +147,23 @@
       setTimeout(() => {
         const after = studentFingerprint(c);
         if (force || before !== after) queueStudentSync(c);
+      }, 0);
+    }, true);
+  }
+
+  function installExamSaveBridge() {
+    const examActionIds = new Set([
+      'saveManualExam','saveExcelExams','saveExamEdit','confirmDeleteExam'
+    ]);
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('button');
+      if (!target || !examActionIds.has(target.id)) return;
+      const c = (typeof currentClass === 'function') ? currentClass() : null;
+      if (!c) return;
+      const before = examFingerprint(c);
+      setTimeout(() => {
+        const after = examFingerprint(c);
+        if (before !== after) queueExamSync(c);
       }, 0);
     }, true);
   }
@@ -144,6 +203,7 @@
   function install() {
     applyProductionLabels();
     installStudentSaveBridge();
+    installExamSaveBridge();
     const btn = document.getElementById('loginBtn');
     if (!btn || !window.GoogleAuth) return;
 
