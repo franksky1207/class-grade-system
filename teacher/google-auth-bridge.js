@@ -4,7 +4,9 @@
   let studentSyncReadyPromise = null;
   let examSyncReadyPromise = null;
   let studentSyncQueue = Promise.resolve();
-  let examSyncQueue = Promise.resolve();
+  let examSyncRunning = false;
+  let examSyncDirty = false;
+  let latestExamSyncClass = null;
 
   function showLoginError(message) {
     const login = document.getElementById('login');
@@ -139,21 +141,35 @@
     return studentSyncQueue;
   }
 
-  function queueExamSync(c) {
-    examSyncQueue = examSyncQueue.then(async () => {
-      setSaveStatus('儲存中…');
-      try {
-        await loadDriveStoreScript();
-        await loadExamSyncScript();
+  async function drainExamSync() {
+    if (examSyncRunning) return;
+    examSyncRunning = true;
+    try {
+      await loadDriveStoreScript();
+      await loadExamSyncScript();
+      while (examSyncDirty) {
+        examSyncDirty = false;
+        const c = latestExamSyncClass;
+        if (!c) break;
+        setSaveStatus('儲存中…');
         await window.GoogleExamSync.syncExamsAndGrades(c);
-        setSaveStatus('✓ 已儲存');
-      } catch (err) {
-        console.error('考試／成績寫入 Google Sheets 失敗：', err);
-        setSaveStatus('⚠ 儲存失敗');
-        if (typeof toast === 'function') toast('⚠ Google Sheets 儲存失敗');
       }
-    });
-    return examSyncQueue;
+      setSaveStatus('✓ 已儲存');
+    } catch (err) {
+      console.error('考試／成績寫入 Google Sheets 失敗：', err);
+      setSaveStatus('⚠ 儲存失敗');
+      if (typeof toast === 'function') toast('⚠ Google Sheets 儲存失敗');
+    } finally {
+      examSyncRunning = false;
+      if (examSyncDirty) drainExamSync();
+    }
+  }
+
+  function queueExamSync(c) {
+    latestExamSyncClass = c;
+    examSyncDirty = true;
+    setSaveStatus('儲存中…');
+    drainExamSync();
   }
 
   function installStudentSaveBridge() {
