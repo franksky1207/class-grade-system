@@ -106,10 +106,20 @@
     setTimeout(() => observer.disconnect(), 30000);
   }
 
+  function loadParentSubjectOrder() {
+    if (document.querySelector('script[data-parent-subject-order]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/parent-subject-order.js?v=1';
+    script.async = false;
+    script.dataset.parentSubjectOrder = '1';
+    document.head.appendChild(script);
+  }
+
   document.addEventListener('click', event => {
     if (event.target?.closest?.('button[data-page="settings"]')) setTimeout(ensurePanel, 0);
   }, true);
 
   watchForPanel();
   handleCallbackResult();
+  loadParentSubjectOrder();
 })();
