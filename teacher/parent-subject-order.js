@@ -42,14 +42,14 @@
   }
 
   function mergeSavedOrder(subjects, saved) {
-    const actual = Array.from(new Set(subjects.map(text).filter(Boolean)));
-    const actualSet = new Set(actual);
+    const configured = Array.from(new Set([...DEFAULT_ORDER, ...subjects.map(text).filter(Boolean)]));
+    const configuredSet = new Set(configured);
     const ordered = [];
     (Array.isArray(saved) ? saved : []).forEach(s => {
       const v = text(s);
-      if (actualSet.has(v) && !ordered.includes(v)) ordered.push(v);
+      if (configuredSet.has(v) && !ordered.includes(v)) ordered.push(v);
     });
-    defaultSort(actual).forEach(s => { if (!ordered.includes(s)) ordered.push(s); });
+    defaultSort(configured).forEach(s => { if (!ordered.includes(s)) ordered.push(s); });
     return ordered;
   }
 
@@ -102,7 +102,7 @@
     box.style.marginTop = '12px';
     box.innerHTML = `
       <div class="subpanel-title" style="margin-bottom:6px">家長端科目顯示順序</div>
-      <div class="small" style="margin-bottom:10px">只顯示這個班級／學期實際已有成績的科目。可拖曳排序；手機也可使用上移／下移。</div>
+      <div class="small" style="margin-bottom:10px">預先提供高中常用 10 科，可先排好順序；之後若出現其他科目會自動補在最後。家長端仍只會顯示實際有成績的科目。</div>
       <div id="parentSubjectOrderClass" class="small" style="margin-bottom:8px"></div>
       <div id="parentSubjectOrderList"></div>
       <div class="actions" style="margin-top:10px">
@@ -127,7 +127,7 @@
       return;
     }
     if (!currentSubjects.length) {
-      list.innerHTML = '<div class="small">這個班級目前沒有成績科目。</div>';
+      list.innerHTML = '<div class="small">目前沒有可設定的科目。</div>';
       return;
     }
 
@@ -192,7 +192,7 @@
       const label = select?.selectedOptions?.[0]?.textContent || '目前班級';
       if (classEl) classEl.textContent = `排序班級：${label}`;
       renderList();
-      setStatus(currentSubjects.length ? '科目順序已載入。' : '目前沒有可排序的科目。', 'success');
+      setStatus('科目順序已載入。', 'success');
     } catch (err) {
       currentSubjects = [];
       renderList();
