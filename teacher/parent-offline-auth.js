@@ -115,6 +115,15 @@
     document.head.appendChild(script);
   }
 
+  function loadParentSubjectTouchDrag() {
+    if (document.querySelector('script[data-parent-subject-touch-drag]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/parent-subject-touch-drag.js?v=1';
+    script.async = false;
+    script.dataset.parentSubjectTouchDrag = '1';
+    document.head.appendChild(script);
+  }
+
   document.addEventListener('click', event => {
     if (event.target?.closest?.('button[data-page="settings"]')) setTimeout(ensurePanel, 0);
   }, true);
@@ -122,4 +131,5 @@
   watchForPanel();
   handleCallbackResult();
   loadParentSubjectOrder();
+  loadParentSubjectTouchDrag();
 })();
