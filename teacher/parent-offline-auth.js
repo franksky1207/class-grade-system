@@ -124,6 +124,15 @@
     document.head.appendChild(script);
   }
 
+  function loadEntrySessionReset() {
+    if (document.querySelector('script[data-entry-session-reset]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/entry-session-reset.js?v=1';
+    script.async = false;
+    script.dataset.entrySessionReset = '1';
+    document.head.appendChild(script);
+  }
+
   document.addEventListener('click', event => {
     if (event.target?.closest?.('button[data-page="settings"]')) setTimeout(ensurePanel, 0);
   }, true);
@@ -132,4 +141,5 @@
   handleCallbackResult();
   loadParentSubjectOrder();
   loadParentSubjectTouchDrag();
+  loadEntrySessionReset();
 })();
