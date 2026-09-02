@@ -25,21 +25,31 @@
     return c.spreadsheetId;
   }
 
+  async function getExistingRowCount(id){
+    const range=encodeURIComponent("'學生資料'!A:D");
+    const data=await (await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}/values/${range}`)).json();
+    return Array.isArray(data.values)?data.values.length:0;
+  }
+
   async function syncStudents(c){
     if(!c) throw new Error('找不到目前班級。');
     const id=await ensureClassSpreadsheet(c);
-    const clearRange=encodeURIComponent("'學生資料'!A:D");
-    await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}/values/${clearRange}:clear`,{
-      method:'POST',body:'{}'
-    });
     const rows=[['座號','姓名','學號','身分證後4碼'],...(c.students||[]).map(s=>[
       String(s.seat||''),String(s.name||''),String(s.account||''),String(s.pass||'')
     ])];
-    const range=`'學生資料'!A1:D${Math.max(1,rows.length)}`;
+
+    // 先取得目前使用列數，再一次覆寫新資料與多餘舊列。
+    // 不先 clear，避免「清空成功但下一個寫入失敗」造成整張學生表暫時變空。
+    const oldCount=await getExistingRowCount(id);
+    const targetRows=Math.max(1,oldCount,rows.length);
+    const values=rows.slice();
+    while(values.length<targetRows) values.push(['','','','']);
+
+    const range=`'學生資料'!A1:D${targetRows}`;
     const encoded=encodeURIComponent(range);
     await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}/values/${encoded}?valueInputOption=RAW`,{
       method:'PUT',
-      body:JSON.stringify({range,majorDimension:'ROWS',values:rows})
+      body:JSON.stringify({range,majorDimension:'ROWS',values})
     });
     return {spreadsheetId:id,count:(c.students||[]).length};
   }
