@@ -25,6 +25,19 @@
     if (manualDate) manualDate.value = today;
     if (excelDate) excelDate.value = today;
 
+    // A new entry session should start completely clean except for today's date.
+    const manualSubject = document.getElementById('manualSubject');
+    const manualName = document.getElementById('manualName');
+    const manualContent1 = document.getElementById('manualContent1');
+    const manualContent2 = document.getElementById('manualContent2');
+    if (manualSubject) manualSubject.value = '';
+    if (manualName) manualName.value = '';
+    if (manualContent1) manualContent1.value = '';
+    if (manualContent2) manualContent2.value = '';
+    document.querySelectorAll('.score-input').forEach(input => { input.value = ''; });
+
+    try { window.ManualExamContentFields?.clear?.(); } catch (_) {}
+
     const paste = document.getElementById('excelPaste');
     const preview = document.getElementById('excelPreview');
     if (paste) paste.value = '';
