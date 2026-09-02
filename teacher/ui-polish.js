@@ -156,6 +156,27 @@
     }, true);
   }
 
+  function resetRecordFilters() {
+    const start = document.getElementById('recordStart');
+    const end = document.getElementById('recordEnd');
+    const subject = document.getElementById('recordSubject');
+    const key = document.getElementById('recordKey');
+    const sort = document.getElementById('recordSort');
+    if (start) start.value = '';
+    if (end) end.value = '';
+    if (subject) subject.value = '';
+    if (key) key.value = '';
+    if (sort) sort.value = 'desc';
+  }
+
+  function installRecordFilterDefaults() {
+    document.addEventListener('click', event => {
+      const btn = event.target?.closest?.('button[data-page="records"]');
+      if (!btn) return;
+      resetRecordFilters();
+    }, true);
+  }
+
   function syncExamViewCompactClass() {
     const modal = document.getElementById('genericModal');
     if (!modal) return;
@@ -181,5 +202,6 @@
   renderLastSync();
   installSyncTimestampObserver();
   installOverviewSwipeHint();
+  installRecordFilterDefaults();
   installExamViewCompactLayout();
 })();
