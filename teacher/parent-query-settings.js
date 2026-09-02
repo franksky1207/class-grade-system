@@ -365,8 +365,9 @@
     setPanelStatus('正在載入家長查詢設定……');
     try {
       const settings = await read();
+      await syncRegistry(settings);
       renderPanel(settings);
-      setPanelStatus('');
+      setPanelStatus('中央查詢設定已同步。', 'success');
     } catch (err) {
       setPanelStatus(err?.message || '家長查詢設定載入失敗。', 'error');
     } finally {
