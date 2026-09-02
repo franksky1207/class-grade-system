@@ -5,8 +5,8 @@
 
   function text(v) { return String(v ?? '').trim(); }
   function esc(v) {
-    return String(v ?? '').replace(/[&<>'"]/g, ch => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+    return String(v ?? '').replace(/[&<>'\"]/g, ch => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'
     }[ch]));
   }
 
@@ -121,8 +121,8 @@
     const classLabel = [text(c.name), text(c.year) ? `${text(c.year)}學年度` : '', text(c.term) ? `第${text(c.term)}學期` : ''].filter(Boolean).join('｜');
     win.document.open();
     win.document.write(`<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>成績複製表</title><style>
-      *{box-sizing:border-box}body{margin:0;padding:24px;background:#f5f7fb;color:#111827;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif}.wrap{max-width:max-content;margin:auto}.head{margin-bottom:14px}.title{font-size:22px;font-weight:900}.sub{font-size:13px;color:#6b7280;margin-top:4px}.note{font-size:13px;color:#475569;margin:0 0 12px}.tablewrap{overflow:auto;background:#fff;border:1px solid #d1d5db;border-radius:10px;box-shadow:0 6px 20px rgba(15,23,42,.06)}table{border-collapse:collapse;background:#fff}th,td{border:1px solid #9ca3af;padding:7px 10px;min-width:88px;text-align:center;white-space:nowrap}th:nth-child(1),td:nth-child(1){min-width:62px}th:nth-child(2),td:nth-child(2){min-width:100px}th{background:#f3f4f6;font-weight:800}tr:nth-child(2) td,tr:nth-child(3) td{font-weight:700;background:#fafafa}@media(max-width:700px){body{padding:12px}th,td{padding:6px 8px}}
-    </style></head><body><div class="wrap"><div class="head"><div class="title">成績複製表</div><div class="sub">${esc(classLabel)}</div></div><div class="note">可直接用滑鼠選取需要的成績區塊，再複製貼到 Excel。</div><div class="tablewrap"><table><tbody>${row1}${row2}${row3}${body}</tbody></table></div></div></body></html>`);
+      *{box-sizing:border-box}body{margin:0;padding:24px;background:#f5f7fb;color:#111827;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif}.wrap{max-width:max-content;margin:auto}.head{margin-bottom:14px}.title{font-size:22px;font-weight:900}.sub{font-size:13px;color:#6b7280;margin-top:4px}.note{font-size:13px;color:#475569;margin:0 0 12px}.tablewrap{overflow:auto;background:#fff;border:1px solid #d1d5db;border-radius:10px;box-shadow:0 6px 20px rgba(15,23,42,.06)}table{border-collapse:collapse;background:#fff}th,td{border:1px solid #9ca3af;padding:7px 10px;min-width:88px;text-align:center;white-space:nowrap}th:nth-child(1),td:nth-child(1){min-width:62px}th:nth-child(2),td:nth-child(2){min-width:100px}th:nth-child(-n+2),td:nth-child(-n+2){user-select:none;-webkit-user-select:none}th{background:#f3f4f6;font-weight:800}tr:nth-child(2) td,tr:nth-child(3) td{font-weight:700;background:#fafafa}@media(max-width:700px){body{padding:12px}th,td{padding:6px 8px}}
+    </style></head><body><div class="wrap"><div class="head"><div class="title">成績複製表</div><div class="sub">${esc(classLabel)}</div></div><div class="note">座號、姓名僅供對照；可直接用滑鼠選取右側需要的成績區塊，再複製貼到 Excel。</div><div class="tablewrap"><table><tbody>${row1}${row2}${row3}${body}</tbody></table></div></div></body></html>`);
     win.document.close();
   }
 
