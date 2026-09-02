@@ -42,19 +42,6 @@
       if (loginBtn) loginBtn.textContent = '使用 Google 帳號登入';
     }
 
-    const settingsSubtitle = document.querySelector('#settings .page-subtitle');
-    if (settingsSubtitle) settingsSubtitle.textContent = '班級資料管理、資料健檢與 Google 雲端設定';
-    document.querySelectorAll('#settings h3').forEach(h => {
-      if (h.textContent.includes('Google 雲端資料')) h.textContent = 'Google 雲端資料';
-    });
-    const cloudPanel = [...document.querySelectorAll('#settings .subpanel')].find(x => x.textContent.includes('Google 雲端資料'));
-    if (cloudPanel) {
-      const notice = cloudPanel.querySelector('.notice');
-      if (notice) notice.textContent = '每個「班級＋學年度＋學期」使用獨立 Google 試算表，另有班級索引資料。網站以 Spreadsheet ID 與班級識別資料定位，不依賴檔名。';
-      const small = cloudPanel.querySelector('p.small');
-      if (small) small.textContent = '右上角會顯示「儲存中…／✓ 已儲存／⚠ 儲存失敗」，班級資料會同步到你的 Google Drive / Google Sheets。';
-    }
-
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -194,7 +181,6 @@
       accessToken = saved.accessToken;
       expiresAt = Number(saved.expiresAt);
       currentUser = saved.currentUser;
-      updateGoogleAccountPanel();
       return true;
     } catch (_) {
       clearStoredSession();
@@ -218,7 +204,6 @@
           expiresAt = Date.now() + Math.max(0, expiresIn - 60) * 1000;
           currentUser = await fetchUserInfo(accessToken);
           saveStoredSession();
-          updateGoogleAccountPanel();
           options.onSuccess?.({ user: currentUser, accessToken });
           resolve({ user: currentUser, accessToken });
         } catch (err) {
@@ -240,7 +225,6 @@
     expiresAt = 0;
     currentUser = null;
     clearStoredSession();
-    updateGoogleAccountPanel();
     const err = new Error('Google 登入已逾時，請重新登入後再繼續。');
     err.code = 'GOOGLE_REAUTH_REQUIRED';
     throw err;
@@ -255,24 +239,7 @@
     expiresAt = 0;
     currentUser = null;
     clearStoredSession();
-    updateGoogleAccountPanel();
     if (tokenToRevoke && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(tokenToRevoke, () => {});
-  }
-
-  function updateGoogleAccountPanel() {
-    const el = document.getElementById('googleAccountStatus');
-    if (!el) return;
-    if (!currentUser) {
-      el.innerHTML = '<div class="small">目前未連線 Google 帳號</div>';
-      return;
-    }
-    const name = String(currentUser.name || '').trim();
-    const email = String(currentUser.email || '').trim();
-    el.innerHTML = `${name ? `<div style="font-weight:700">${escapeHtml(name)}</div>` : ''}<div class="small">${escapeHtml(email || 'Google 帳號已連線')}</div><div class="small" style="margin-top:3px">✓ 已連線 Google Drive / Google Sheets</div>`;
-  }
-
-  function escapeHtml(v) {
-    return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
   function installLogoutControl() {
@@ -284,9 +251,8 @@
     panel.id = 'googleLogoutPanel';
     panel.className = 'card pad';
     panel.style.marginTop = '14px';
-    panel.innerHTML = `<div class="head" style="margin-bottom:0"><div><h3 style="margin:0">Google 帳號</h3><div id="googleAccountStatus" style="margin-top:6px"></div></div><button class="btn" id="googleLogoutBtn">登出／切換 Google 帳號</button></div>`;
+    panel.innerHTML = `<div class="head" style="margin-bottom:0"><div><h3 style="margin:0">Google 帳號</h3><div class="small" style="margin-top:4px">需要切換老師帳號或使用共用裝置時，可在這裡登出。</div></div><button class="btn" id="googleLogoutBtn">登出／切換 Google 帳號</button></div>`;
     settingsCard.appendChild(panel);
-    updateGoogleAccountPanel();
 
     document.getElementById('googleLogoutBtn')?.addEventListener('click', () => {
       signOut();
@@ -302,11 +268,6 @@
         if (typeof updateHeader === 'function') updateHeader();
       } catch (_) { location.reload(); }
     });
-
-    document.addEventListener('click', e => {
-      const b = e.target?.closest?.('button');
-      if (b?.dataset?.page === 'settings') setTimeout(updateGoogleAccountPanel, 0);
-    }, true);
   }
 
   function tryAutoRestore() {
@@ -334,7 +295,7 @@
 
   window.GoogleAuth = {
     init, signIn, signOut, getAccessToken, getUser, isSignedIn,
-    clientId: CLIENT_ID, scopes: SCOPES, localToday, tryAutoRestore, updateGoogleAccountPanel
+    clientId: CLIENT_ID, scopes: SCOPES, localToday, tryAutoRestore
   };
 
   applyProductionUiCleanup();
