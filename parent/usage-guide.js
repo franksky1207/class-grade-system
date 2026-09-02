@@ -23,7 +23,6 @@
     style.textContent = `
       .parent-help-btn{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:8px 10px;font-size:13px;font-weight:850;white-space:nowrap}
       .parent-latest-score{margin-top:9px;display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;font-size:12px;font-weight:800}
-      .parent-section-subtitle{margin:-5px 0 12px 14px;color:var(--muted);font-size:13px;line-height:1.55}
       .parent-help-overlay{position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.28);display:none}.parent-help-overlay.open{display:block}
       .parent-help-drawer{position:fixed;top:0;right:-460px;z-index:90;width:min(430px,94vw);height:100vh;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 36px rgba(15,23,42,.16);transition:.22s;padding:18px;overflow:auto}.parent-help-drawer.open{right:0}
       .parent-help-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.parent-help-head h2{font-size:21px;margin:0}.parent-help-close{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:7px 10px;font-weight:900;color:#475569}
@@ -94,21 +93,6 @@
     copy.appendChild(badge);
   }
 
-  function ensureSectionSubtitles() {
-    const homeTitle = document.querySelector('#homePage .section-title');
-    if (homeTitle && !document.querySelector('[data-parent-home-subtitle]')) {
-      const p = document.createElement('p');
-      p.dataset.parentHomeSubtitle = '1';
-      p.className = 'parent-section-subtitle';
-      p.textContent = '查看最近 7 日內有登記的成績，可切換日期。';
-      homeTitle.insertAdjacentElement('afterend', p);
-    }
-    const recordsSubtitle = document.querySelector('#recordsPage .records-head p');
-    if (recordsSubtitle) recordsSubtitle.textContent = '查看目前公開學期的歷史成績，依日期由新到舊排列。';
-    const subjectsSubtitle = document.querySelector('#subjectsPage .subjects-head p');
-    if (subjectsSubtitle) subjectsSubtitle.textContent = '查看各科近期表現、本學期平均與班級百分位變化。';
-  }
-
   function install() {
     addStyles();
     ensureGuide();
@@ -116,7 +100,6 @@
     if (!app || app.classList.contains('hidden')) return;
     ensureHelpButton();
     ensureLatestScore();
-    ensureSectionSubtitles();
   }
 
   const observer = new MutationObserver(install);
