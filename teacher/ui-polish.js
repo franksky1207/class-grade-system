@@ -9,6 +9,7 @@
     style.id = 'teacherUiPolishStyles';
     style.textContent = `
       #lastSyncText{font-size:12px;color:var(--muted);white-space:nowrap}
+      #mobileSubjectPicker{display:none;margin-top:8px}
       #overviewTable .sticky-table th:nth-child(1),
       #overviewTable .sticky-table td:nth-child(1){min-width:60px;width:60px;max-width:60px;padding-left:8px;padding-right:8px;text-align:center}
       #overviewTable .sticky-table th:nth-child(2),
@@ -28,6 +29,7 @@
       #genericModal.exam-view-compact th:nth-child(3),
       #genericModal.exam-view-compact td:nth-child(3){width:28%;text-align:center}
       @media(max-width:767px){
+        #mobileSubjectPicker{display:block}
         .header-inner{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;gap:8px;padding:10px 12px}
         .header-inner>div:first-child{min-width:0}
         .header-inner .brand{font-size:16px;line-height:1.25}
@@ -177,6 +179,49 @@
     }, true);
   }
 
+  function refreshMobileSubjectPicker() {
+    const input = document.getElementById('manualSubject');
+    if (!input) return;
+    let picker = document.getElementById('mobileSubjectPicker');
+    if (!picker) {
+      picker = document.createElement('select');
+      picker.id = 'mobileSubjectPicker';
+      picker.className = 'field';
+      picker.setAttribute('aria-label', '選擇既有科目');
+      input.insertAdjacentElement('afterend', picker);
+      picker.addEventListener('change', () => {
+        if (!picker.value) return;
+        input.value = picker.value;
+        input.dispatchEvent(new Event('input', { bubbles:true }));
+        input.dispatchEvent(new Event('change', { bubbles:true }));
+        picker.value = '';
+      });
+    }
+    let subjects = [];
+    try {
+      const c = typeof currentClass === 'function' ? currentClass() : null;
+      subjects = [...new Set((c?.exams || []).map(e => String(e.subject || '').trim()).filter(Boolean))].sort();
+    } catch (_) {}
+    picker.innerHTML = '<option value="">選擇既有科目…</option>' + subjects.map(s => {
+      const option = document.createElement('option');
+      option.value = s;
+      option.textContent = s;
+      return option.outerHTML;
+    }).join('');
+    picker.hidden = subjects.length === 0;
+  }
+
+  function installMobileSubjectPicker() {
+    refreshMobileSubjectPicker();
+    document.addEventListener('click', event => {
+      const btn = event.target?.closest?.('button');
+      if (!btn) return;
+      if (btn.dataset?.page === 'entry' || btn.dataset?.entryMode === 'manual') {
+        setTimeout(refreshMobileSubjectPicker, 0);
+      }
+    }, true);
+  }
+
   function syncExamViewCompactClass() {
     const modal = document.getElementById('genericModal');
     if (!modal) return;
@@ -203,5 +248,6 @@
   installSyncTimestampObserver();
   installOverviewSwipeHint();
   installRecordFilterDefaults();
+  installMobileSubjectPicker();
   installExamViewCompactLayout();
 })();
