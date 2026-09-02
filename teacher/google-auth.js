@@ -317,6 +317,15 @@
     document.head.appendChild(script);
   }
 
+  function loadParentOfflineAuth() {
+    if (document.querySelector('script[data-parent-offline-auth]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/parent-offline-auth.js?v=1';
+    script.async = false;
+    script.dataset.parentOfflineAuth = '1';
+    document.head.appendChild(script);
+  }
+
   window.GoogleAuth = {
     init, signIn, signOut, getAccessToken, getUser, isSignedIn,
     clientId: CLIENT_ID, scopes: SCOPES, localToday, tryAutoRestore
@@ -329,5 +338,6 @@
   loadProductionSafety();
   loadUiPolish();
   loadParentQuerySettings();
+  loadParentOfflineAuth();
   setTimeout(tryAutoRestore, 0);
 })();
