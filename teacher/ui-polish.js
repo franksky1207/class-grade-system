@@ -3,6 +3,12 @@
   const LAST_SYNC_KEY = 'class-grade-system-last-google-sync';
   const SWIPE_HINT_KEY = 'class-grade-system-overview-swipe-hint-seen';
 
+  function detectPhoneLayout() {
+    const screenWidth = Math.min(Number(screen?.width || 9999), Number(screen?.height || 9999));
+    const touch = Number(navigator.maxTouchPoints || 0) > 0;
+    if (touch && screenWidth <= 600) document.documentElement.classList.add('phone-device');
+  }
+
   function injectStyles() {
     if (document.getElementById('teacherUiPolishStyles')) return;
     const style = document.createElement('style');
@@ -28,6 +34,14 @@
       #genericModal.exam-view-compact td:nth-child(2){width:52%;text-align:left;overflow:hidden;text-overflow:ellipsis}
       #genericModal.exam-view-compact th:nth-child(3),
       #genericModal.exam-view-compact td:nth-child(3){width:28%;text-align:center}
+
+      /* iPhone/Safari 縮小頁面時 innerWidth 會跨過一般 CSS breakpoint。
+         以實際手機裝置 class 保持主介面單欄滿寬，不受頁面縮放比例影響。 */
+      html.phone-device #dash .dashboard-mid{grid-template-columns:minmax(0,1fr)!important;width:100%;max-width:none}
+      html.phone-device #dash .dashboard-mid>.card{width:100%;max-width:none;min-width:0}
+      html.phone-device #dash .dashboard-low-card{display:block;width:100%!important;max-width:none!important;min-width:0}
+      html.phone-device #dash .dashboard-low-card #lowTable{width:100%;max-width:100%}
+
       @media(max-width:767px){
         #mobileSubjectPicker{display:block}
         .header-inner{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;gap:8px;padding:10px 12px}
@@ -138,7 +152,7 @@
         try { localStorage.setItem(LAST_SYNC_KEY, ts); } catch (_) {}
         renderLastSync();
       }
-    }).observe(status, { childList:true, characterData:true,subtree:true });
+    }).observe(status, { childList:true, characterData:true, subtree:true });
   }
 
   function showOverviewSwipeHint() {
@@ -250,6 +264,7 @@
       .observe(document.getElementById('genericModalCard') || modal, { childList:true, subtree:true });
   }
 
+  detectPhoneLayout();
   injectStyles();
   enhanceBackButtons();
   enhanceLowDashboardCard();
