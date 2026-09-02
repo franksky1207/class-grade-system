@@ -26,6 +26,7 @@
 <section id="subjectsPage" class="app-page hidden"><div class="subjects-shell"><div class="subjects-head"><div><h2>分科表現</h2><p>依科目查看近期表現與本學期平均。</p></div></div><div id="subjectContent"></div></div></section>
 </main>
 <nav class="bottom-nav" aria-label="主要導覽"><button class="nav-btn active" data-page="home"><span class="icon">⌂</span><span>首頁</span></button><button class="nav-btn" data-page="records"><span class="icon">▤</span><span>成績紀錄</span></button><button class="nav-btn" data-page="subjects"><span class="icon">▥</span><span>分科表現</span></button></nav></div>
+<script src="/parent/subject-insights.js?v=1"></script>
 <script>
 (() => {
 const API='https://sphrceazgfrjtgeeikfp.supabase.co/functions/v1/parent-query-api',SESSION_KEY='class-grade-system-parent-session',HISTORY_BATCH_DAYS=7,DEFAULT_SUBJECT_ORDER=['國文','英文','數學','地理','歷史','公民','物理','化學','地科','生物'];
