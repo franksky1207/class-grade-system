@@ -78,6 +78,22 @@ input::placeholder{color:#9ca3af}
 .placeholder-panel h2{margin:0 0 8px;font-size:21px}
 .placeholder-panel p{margin:0;color:var(--muted);line-height:1.7}
 
+/* records */
+.records-shell{max-width:900px;margin:0 auto}
+.records-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:14px}
+.records-head h2{font-size:22px;margin:0;font-weight:900}
+.records-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.record-day{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 7px 22px rgba(15,23,42,.05);overflow:hidden;margin-bottom:14px}
+.record-date{padding:13px 15px;background:#f8fbff;border-bottom:1px solid var(--line);font-size:17px;font-weight:900;color:#1d4ed8}
+.record-row{padding:14px 15px;border-bottom:1px solid #edf0f4;display:grid;gap:7px}
+.record-row:last-child{border-bottom:0}
+.record-main{font-weight:850;font-size:15px;line-height:1.45}
+.record-values{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.record-score{font-size:21px;font-weight:950;color:#111827;white-space:nowrap}
+.record-average{font-size:13px;font-weight:750;color:#64748b;white-space:nowrap}
+.load-more{width:100%;border:1px solid #93c5fd;background:#fff;color:#1d4ed8;border-radius:14px;padding:12px 16px;font-size:15px;font-weight:850;margin-top:4px}
+.records-end{text-align:center;color:#94a3b8;font-size:13px;padding:12px 0 4px}
+
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:7px 8px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr)}
 .nav-btn{border:0;background:transparent;color:#6b7280;padding:7px 4px 4px;font-size:12px;font-weight:800;display:grid;gap:3px;place-items:center}
 .nav-btn .icon{font-size:21px;line-height:1}
@@ -111,6 +127,15 @@ input::placeholder{color:#9ca3af}
   .grade-info{font-size:16px}
   .grade-comparison{font-size:19px}
   .swipe-note{text-align:left;margin-left:2px}
+  .records-head{margin-bottom:18px}
+  .records-head h2{font-size:26px}
+  .record-date{padding:14px 20px;font-size:18px}
+  .record-row{padding:15px 20px;grid-template-columns:minmax(0,1fr) 120px 150px;align-items:center;gap:18px}
+  .record-main{font-size:16px}
+  .record-values{display:contents}
+  .record-score{font-size:18px;text-align:right}
+  .record-average{font-size:14px;text-align:right}
+  .load-more{max-width:320px;display:block;margin:8px auto 0}
 }
 @media(min-width:1100px){
   .grade-card{flex-basis:48%}
@@ -171,8 +196,18 @@ input::placeholder{color:#9ca3af}
     </section>
 
     <section id="recordsPage" class="app-page hidden">
-      <div class="placeholder-panel"><h2>成績紀錄</h2><p>第 8 步會在這裡建立完整成績紀錄。</p></div>
+      <div class="records-shell">
+        <div class="records-head">
+          <div>
+            <h2>成績紀錄</h2>
+            <p>依日期由新到舊，查看目前公開學期的成績。</p>
+          </div>
+        </div>
+        <div id="recordsList"></div>
+        <div id="recordsMore"></div>
+      </div>
     </section>
+
     <section id="subjectsPage" class="app-page hidden">
       <div class="placeholder-panel"><h2>分科表現</h2><p>第 9 步會在這裡建立分科近期成績與平均。</p></div>
     </section>
@@ -189,10 +224,12 @@ input::placeholder{color:#9ca3af}
 (() => {
   const API = 'https://sphrceazgfrjtgeeikfp.supabase.co/functions/v1/parent-query-api';
   const SESSION_KEY = 'class-grade-system-parent-session';
+  const HISTORY_BATCH_DAYS = 7;
   const pathParts = location.pathname.split('/').filter(Boolean);
   const queryCode = String(pathParts[0] === 'p' ? pathParts[1] : '').trim().toLowerCase();
   let sessionData = null;
   let selectedDate = '';
+  let historyVisibleDays = HISTORY_BATCH_DAYS;
 
   const loginView = document.getElementById('loginView');
   const appView = document.getElementById('appView');
@@ -282,7 +319,7 @@ input::placeholder{color:#9ca3af}
 
   function renderGrades(records){
     const area=document.getElementById('gradeArea');
-    if(!selectedDate){ area.innerHTML='<div class="empty-card">最近 7 天沒有成績</div>'; return; }
+    if(!selectedDate){ area.innerHTML='<div class="empty-card">沒有成績</div>'; return; }
     const list=records.filter(r=>text(r.date)===selectedDate);
     if(!list.length){ area.innerHTML='<div class="empty-card">沒有成績</div>'; return; }
     area.innerHTML=`
@@ -320,16 +357,63 @@ input::placeholder{color:#9ca3af}
     renderGrades(records);
   }
 
+  function allHistoryDates(records){
+    const seen=new Set(), dates=[];
+    for(const r of records){
+      const d=text(r.date);
+      if(!d || seen.has(d)) continue;
+      seen.add(d); dates.push(d);
+    }
+    return dates.sort((a,b)=>b.localeCompare(a));
+  }
+
+  function renderRecords(){
+    const records=Array.isArray(sessionData?.records)?sessionData.records:[];
+    const dates=allHistoryDates(records);
+    const listEl=document.getElementById('recordsList');
+    const moreEl=document.getElementById('recordsMore');
+    if(!dates.length){
+      listEl.innerHTML='<div class="empty-card">沒有成績</div>';
+      moreEl.innerHTML='';
+      return;
+    }
+    const visible=dates.slice(0,historyVisibleDays);
+    listEl.innerHTML=visible.map(d=>{
+      const rows=records.filter(r=>text(r.date)===d);
+      return `<section class="record-day">
+        <div class="record-date">${escapeHtml(dateLabel(d))}</div>
+        ${rows.map(r=>`<div class="record-row">
+          <div class="record-main">${escapeHtml(r.subject)}｜${escapeHtml(r.examName)}</div>
+          <div class="record-values">
+            <div class="record-score">${escapeHtml(r.score)} 分</div>
+            <div class="record-average">班平均 ${round2(r.classAverage)}</div>
+          </div>
+        </div>`).join('')}
+      </section>`;
+    }).join('');
+    if(historyVisibleDays<dates.length){
+      moreEl.innerHTML='<button id="loadMoreRecords" class="load-more" type="button">載入更早成績</button>';
+      document.getElementById('loadMoreRecords').addEventListener('click',()=>{
+        historyVisibleDays+=HISTORY_BATCH_DAYS;
+        renderRecords();
+      });
+    }else{
+      moreEl.innerHTML='<div class="records-end">已顯示本學期全部成績</div>';
+    }
+  }
+
   function openPage(page){
     ['home','records','subjects'].forEach(name=>{
       document.getElementById(`${name}Page`)?.classList.toggle('hidden',name!==page);
     });
     document.querySelectorAll('.nav-btn[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+    if(page==='records') renderRecords();
     window.scrollTo({top:0,behavior:'smooth'});
   }
 
   function showApp(data){
     sessionData=data; saveSession(data);
+    historyVisibleDays=HISTORY_BATCH_DAYS;
     loginView.classList.add('hidden'); appView.classList.remove('hidden');
     renderHome(data); openPage('home');
   }
@@ -337,7 +421,7 @@ input::placeholder{color:#9ca3af}
   document.querySelectorAll('.nav-btn[data-page]').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.page)));
   document.getElementById('logoutBtn').addEventListener('click',()=>{
     try{sessionStorage.removeItem(SESSION_KEY);}catch(_){}
-    sessionData=null; selectedDate='';
+    sessionData=null; selectedDate=''; historyVisibleDays=HISTORY_BATCH_DAYS;
     appView.classList.add('hidden'); loginView.classList.remove('hidden');
     form.reset(); setStatus('');
   });
