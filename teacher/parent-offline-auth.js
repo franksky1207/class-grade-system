@@ -178,6 +178,15 @@
     document.head.appendChild(script);
   }
 
+  function loadClassAnalysisEntry() {
+    if (document.querySelector('script[data-class-analysis-entry]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/class-analysis-entry.js?v=1';
+    script.async = false;
+    script.dataset.classAnalysisEntry = '1';
+    document.head.appendChild(script);
+  }
+
   document.addEventListener('click', event => {
     if (event.target?.closest?.('button[data-page="settings"]')) setTimeout(ensurePanel, 0);
   }, true);
@@ -192,4 +201,5 @@
   loadRecordCopyTable();
   loadStudentParentPreview();
   loadStudentTrendAnalysis();
+  loadClassAnalysisEntry();
 })();
