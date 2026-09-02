@@ -308,6 +308,15 @@
     document.head.appendChild(script);
   }
 
+  function loadParentQuerySettings() {
+    if (document.querySelector('script[data-parent-query-settings]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/parent-query-settings.js';
+    script.async = false;
+    script.dataset.parentQuerySettings = '1';
+    document.head.appendChild(script);
+  }
+
   window.GoogleAuth = {
     init, signIn, signOut, getAccessToken, getUser, isSignedIn,
     clientId: CLIENT_ID, scopes: SCOPES, localToday, tryAutoRestore
@@ -319,5 +328,6 @@
   installLogoutControl();
   loadProductionSafety();
   loadUiPolish();
+  loadParentQuerySettings();
   setTimeout(tryAutoRestore, 0);
 })();
