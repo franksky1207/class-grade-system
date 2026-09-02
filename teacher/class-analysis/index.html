@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>班級分析</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--line:#e5e7eb;--text:#111827;--muted:#64748b;--primary:#2563eb;--soft:#eff6ff;--shadow:0 10px 30px rgba(15,23,42,.07)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif}button,input,select{font:inherit}.wrap{max-width:1280px;margin:auto;padding:16px 12px 36px}.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.title{font-size:25px;font-weight:900;margin:0}.meta{font-size:14px;color:var(--muted);margin-top:5px;line-height:1.6}.close{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 12px;font-weight:800;color:#475569}.panel,.chart-card,.summary,.help{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.panel{padding:14px;margin-top:14px}.control-grid{display:grid;gap:14px}.label{font-size:13px;font-weight:900;color:#475569;margin-bottom:6px}.select{width:100%;border:1px solid #d1d5db;border-radius:11px;padding:11px 12px;background:#fff}.buttons{display:flex;gap:7px;flex-wrap:wrap}.seg{border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:9px 11px;font-weight:800;color:#475569}.seg.active{background:var(--primary);color:white;border-color:var(--primary)}.custom{display:none;align-items:center;gap:8px;margin-top:8px}.custom.show{display:flex}.custom input{width:88px;border:1px solid #d1d5db;border-radius:10px;padding:9px 10px}.apply{border:1px solid #93c5fd;background:var(--soft);color:#1d4ed8;border-radius:10px;padding:9px 11px;font-weight:800}.summary{margin-top:14px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}.count{font-weight:900;color:#1d4ed8}.state{margin-top:14px;min-height:360px;display:grid;place-items:center;background:#fff;border:1px dashed #cbd5e1;border-radius:18px;color:#64748b;font-weight:800;text-align:center;padding:22px}.chart-card{display:none;margin-top:14px;padding:14px}.chart-card.show{display:block}.chart-head{display:flex;justify-content:space-between;align-items:end;gap:10px;margin-bottom:10px}.chart-title{font-size:18px;font-weight:900}.chart-sub{font-size:12px;color:var(--muted);margin-top:2px}.focus-row{margin:8px 0 4px}.focus-row .select{font-size:15px}.chart{height:340px;position:relative;overflow:hidden}.chart svg{width:100%;height:100%;display:block;touch-action:manipulation}.axis-label{font-size:11px;fill:#64748b}.gridline{stroke:#e5e7eb;stroke-width:1}.line{fill:none;stroke:#94a3b8;stroke-width:1.6;opacity:.32;stroke-linejoin:round;stroke-linecap:round}.line.focus{stroke:#2563eb;stroke-width:3;opacity:1}.dot{fill:#fff;stroke:#94a3b8;stroke-width:1.6;opacity:.5}.dot.focus{stroke:#2563eb;stroke-width:2.6;opacity:1}.hit{fill:transparent;cursor:pointer}.tip{position:fixed;z-index:1000;display:none;max-width:min(340px,calc(100vw - 24px));background:#111827;color:#fff;border-radius:12px;padding:11px 12px;font-size:13px;line-height:1.55;box-shadow:0 14px 36px rgba(15,23,42,.28);pointer-events:none}.tip.show{display:block}.tip b{font-size:14px}.help{margin-top:14px;padding:12px 14px}.help summary{font-weight:900;cursor:pointer}.help-body{font-size:13px;color:#475569;line-height:1.7;margin-top:8px}.empty-chart{height:100%;display:grid;place-items:center;color:#64748b;font-weight:800}
+@media(min-width:768px){.wrap{padding:24px 22px 44px}.title{font-size:28px}.control-grid{grid-template-columns:minmax(220px,300px) 1.3fr 1fr 1.25fr;align-items:end}.chart-card{padding:18px}.chart{height:460px}.focus-row{max-width:360px}.state{min-height:420px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1 class="title">班級分析</h1><div id="meta" class="meta"></div></div>
+    <button id="closeBtn" class="close" type="button">關閉分析</button>
+  </div>
+
+  <section class="panel">
+    <div class="control-grid">
+      <div><div class="label">科目</div><select id="subject" class="select"><option value="">請選擇科目</option></select></div>
+      <div><div class="label">分析範圍</div><div class="buttons"><button class="seg" data-range="5">近5次</button><button class="seg active" data-range="10">近10次</button><button class="seg" data-range="15">近15次</button><button class="seg" data-range="custom">自訂</button><button class="seg" data-range="all">全部</button></div><div id="customRow" class="custom"><span>最近</span><input id="customN" type="number" min="1" step="1" value="8" inputmode="numeric"><span>次</span><button id="applyCustom" class="apply" type="button">套用</button></div></div>
+      <div><div class="label">位置</div><div class="buttons"><button class="seg active" data-position="all">全部</button><button class="seg" data-position="high">高位</button><button class="seg" data-position="mid">中位</button><button class="seg" data-position="low">低位</button></div></div>
+      <div><div class="label">變化型態</div><div class="buttons"><button class="seg active" data-change="all">全部</button><button class="seg" data-change="stable">穩定</button><button class="seg" data-change="up">上升</button><button class="seg" data-change="down">下降</button><button class="seg" data-change="volatile">波動較大</button></div></div>
+    </div>
+  </section>
+
+  <div id="summary" class="summary" style="display:none"><div><span class="count" id="countText"></span><span id="summaryText" class="meta" style="margin-left:8px"></span></div><button id="clearFilters" class="seg" type="button">清除篩選</button></div>
+  <div id="state" class="state">請先選擇科目</div>
+
+  <section id="chartCard" class="chart-card">
+    <div class="chart-head"><div><div class="chart-title">班級百分位趨勢</div><div id="chartSub" class="chart-sub"></div></div></div>
+    <div class="focus-row"><div class="label">聚焦學生</div><select id="focus" class="select"><option value="">全部學生</option></select></div>
+    <div id="chart" class="chart"></div>
+  </section>
+
+  <details class="help"><summary>判定說明</summary><div class="help-body">位置依所選範圍內的平均班級百分位判定：高位為 70 以上、中位為 30 以上未滿 70、低位為未滿 30。變化型態會綜合近期整體趨勢與相鄰考試的起伏判定；明顯往上為「上升」、明顯往下為「下降」、相鄰考試起伏較大為「波動較大」，其餘為「穩定」。所有判定與百分位都只在此頁即時計算，不會寫回 Google Sheet。</div></details>
+</div>
+<div id="tooltip" class="tip"></div>
+<script>
+(() => {
+const SESSION_KEY='class-grade-system-class-analysis';
+const text=v=>String(v??'').trim();
+const valid=v=>{if(v===null||v===undefined||text(v)==='')return null;const n=Number(v);return Number.isFinite(n)?n:null};
+const esc=v=>text(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let payload=null,subject='',rangeMode='10',customN=8,positionFilter='all',changeFilter='all',focusSeat='',lastGroups=[];
+try{const raw=sessionStorage.getItem(SESSION_KEY);if(raw){payload=JSON.parse(raw)?.data||null;sessionStorage.removeItem(SESSION_KEY)}}catch(_){}
+const meta=document.getElementById('meta'),subjectEl=document.getElementById('subject'),state=document.getElementById('state'),chartCard=document.getElementById('chartCard'),chart=document.getElementById('chart'),focus=document.getElementById('focus'),tip=document.getElementById('tooltip'),summary=document.getElementById('summary');
+if(!payload){state.textContent='找不到分析資料，請從教師端「成績總覽」重新開啟。';return}
+const c=payload.class||{};meta.textContent=[text(c.name),text(c.year)?`${text(c.year)}學年度`:'',text(c.term)?`第${text(c.term)}學期`:''].filter(Boolean).join('｜');
+const subjects=[...new Set((payload.exams||[]).map(e=>text(e.subject)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));subjects.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;subjectEl.appendChild(o)});
+function dateMs(v){const m=text(v).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);return m?new Date(+m[1],+m[2]-1,+m[3],12).getTime():NaN}
+function dateLabel(v){const m=text(v).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);return m?`${+m[2]}/${+m[3]}`:text(v)}
+function fullDate(v){const m=text(v).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);return m?`${m[1]}/${String(m[2]).padStart(2,'0')}/${String(m[3]).padStart(2,'0')}`:text(v)}
+function scoreFor(exam,seat){const hit=(exam.scores||[]).find(r=>text(r.seat)===text(seat));return hit?valid(hit.value):null}
+function examStats(exam,student){const own=scoreFor(exam,student.seat);if(own===null)return null;const vals=(exam.scores||[]).map(r=>valid(r.value)).filter(v=>v!==null);if(!vals.length)return null;const n=vals.length,mean=vals.reduce((a,b)=>a+b,0)/n,lower=vals.filter(v=>v<own).length,equal=vals.filter(v=>v===own).length,greater=vals.filter(v=>v>own).length;return{date:text(exam.date),subject:text(exam.subject),examName:text(exam.name),score:own,classAverage:mean,percentile:(lower+.5*equal)/n*100,rank:1+greater,participantCount:n,sourceIndex:Number(exam.sourceIndex)||0}}
+function limit(points){if(rangeMode==='all')return points;if(rangeMode==='custom')return points.slice(-Math.max(1,customN));return points.slice(-Number(rangeMode||10))}
+function jitter(points){const groups=new Map();points.forEach(p=>{if(!groups.has(p.date))groups.set(p.date,[]);groups.get(p.date).push(p)});groups.forEach(g=>{const step=1.5*3600000;g.forEach((p,i)=>{p.xTime=dateMs(p.date)+(i-(g.length-1)/2)*step})});return points}
+function regressionTotal(points){const n=points.length;if(n<2)return 0;const xm=(n-1)/2,ym=points.reduce((s,p)=>s+p.percentile,0)/n;let num=0,den=0;points.forEach((p,i)=>{num+=(i-xm)*(p.percentile-ym);den+=(i-xm)*(i-xm)});return den?(num/den)*(n-1):0}
+function meanAbsStep(points){if(points.length<2)return 0;let sum=0;for(let i=1;i<points.length;i++)sum+=Math.abs(points[i].percentile-points[i-1].percentile);return sum/(points.length-1)}
+function classify(points){const avg=points.reduce((s,p)=>s+p.percentile,0)/points.length;const pos=avg>=70?'high':avg<30?'low':'mid';const trend=regressionTotal(points),swing=meanAbsStep(points);let change='stable';if(trend>=12)change='up';else if(trend<=-12)change='down';else if(swing>=15)change='volatile';return{avg,pos,change,trend,swing}}
+function allGroups(){const exams=(payload.exams||[]).filter(e=>text(e.subject)===subject).sort((a,b)=>dateMs(a.date)-dateMs(b.date)||Number(a.sourceIndex)-Number(b.sourceIndex));return(payload.students||[]).map(student=>{const pts=limit(exams.map(e=>examStats(e,student)).filter(Boolean));if(!pts.length)return null;const cls=classify(pts);return{student,points:jitter(pts),...cls}}).filter(Boolean)}
+function filteredGroups(){return allGroups().filter(g=>(positionFilter==='all'||g.pos===positionFilter)&&(changeFilter==='all'||g.change===changeFilter))}
+function fmt(n,d=2){return Number.isFinite(n)?Number(n).toFixed(d):'—'}
+function showTip(p,student,e){tip.innerHTML=`<b>${esc(fullDate(p.date))}｜${esc(student.name)}</b><br>${esc(p.subject)}｜${esc(p.examName||'—')}<br>原始分數：${esc(p.score)}<br>班平均：${fmt(p.classAverage)}<br>班級百分位：${fmt(p.percentile)}<br>名次：${p.rank} / ${p.participantCount}`;tip.classList.add('show');const pad=10,w=tip.offsetWidth,h=tip.offsetHeight;let x=(e?.clientX??innerWidth/2)+12,y=(e?.clientY??80)+12;if(x+w>innerWidth-pad)x=innerWidth-w-pad;if(y+h>innerHeight-pad)y=(e?.clientY??80)-h-12;if(y<pad)y=pad;tip.style.left=`${x}px`;tip.style.top=`${y}px`}
+function hideTip(){tip.classList.remove('show')}
+function svgEl(tag,attrs={}){const n=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));return n}
+function draw(groups){chart.innerHTML='';if(!groups.length){chart.innerHTML='<div class="empty-chart">目前沒有符合條件的學生</div>';return}const all=groups.flatMap(g=>g.points),W=Math.max(320,chart.clientWidth||320),H=Math.max(300,chart.clientHeight||340),m={l:44,r:14,t:16,b:42},iw=W-m.l-m.r,ih=H-m.t-m.b;let minX=Math.min(...all.map(p=>p.xTime)),maxX=Math.max(...all.map(p=>p.xTime));if(minX===maxX){minX-=12*3600000;maxX+=12*3600000}const sx=x=>m.l+(x-minX)/(maxX-minX)*iw,sy=y=>m.t+(100-y)/100*ih,svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'});chart.appendChild(svg);for(let i=0;i<=4;i++){const v=i*25,y=sy(v);svg.appendChild(svgEl('line',{x1:m.l,x2:W-m.r,y1:y,y2:y,class:'gridline'}));const t=svgEl('text',{x:m.l-7,y:y+4,'text-anchor':'end',class:'axis-label'});t.textContent=v;svg.appendChild(t)}const dates=[...new Set(all.map(p=>p.date))].sort((a,b)=>dateMs(a)-dateMs(b)),maxLabels=innerWidth<768?5:8,step=Math.max(1,Math.ceil(dates.length/maxLabels));let ticks=dates.filter((_,i)=>i%step===0);if(dates.length&&ticks[ticks.length-1]!==dates[dates.length-1])ticks.push(dates[dates.length-1]);ticks.forEach(d=>{const t=svgEl('text',{x:sx(dateMs(d)),y:H-13,'text-anchor':'middle',class:'axis-label'});t.textContent=dateLabel(d);svg.appendChild(t)});
+  groups.forEach(g=>{const isFocus=focusSeat&&text(g.student.seat)===text(focusSeat),dim=focusSeat&&!isFocus;const line=svgEl('polyline',{points:g.points.map(p=>`${sx(p.xTime)},${sy(p.percentile)}`).join(' '),class:`line${isFocus?' focus':''}`});if(dim)line.style.opacity='.10';svg.appendChild(line);g.points.forEach(p=>{const x=sx(p.xTime),y=sy(p.percentile),dot=svgEl('circle',{cx:x,cy:y,r:isFocus?4.8:2.6,class:`dot${isFocus?' focus':''}`});if(dim)dot.style.opacity='.08';svg.appendChild(dot);if(!focusSeat||isFocus){const hit=svgEl('circle',{cx:x,cy:y,r:isFocus?15:10,class:'hit'}),handler=e=>showTip(p,g.student,e);hit.addEventListener('mouseenter',handler);hit.addEventListener('mousemove',handler);hit.addEventListener('mouseleave',()=>{if(!matchMedia('(pointer:coarse)').matches)hideTip()});hit.addEventListener('click',e=>{e.preventDefault();handler(e)});svg.appendChild(hit)}})})}
+function labelPos(v){return v==='high'?'高位':v==='mid'?'中位':v==='low'?'低位':'全部位置'}
+function labelChange(v){return v==='stable'?'穩定':v==='up'?'上升':v==='down'?'下降':v==='volatile'?'波動較大':'全部型態'}
+function rebuildFocus(groups){const keep=focusSeat;focus.innerHTML='<option value="">全部學生</option>';groups.slice().sort((a,b)=>Number(a.student.seat)-Number(b.student.seat)||text(a.student.name).localeCompare(text(b.student.name),'zh-Hant')).forEach(g=>{const o=document.createElement('option');o.value=text(g.student.seat);o.textContent=`${String(g.student.seat).padStart(2,'0')} ${g.student.name}`;focus.appendChild(o)});focusSeat=groups.some(g=>text(g.student.seat)===text(keep))?keep:'';focus.value=focusSeat}
+function render(){if(!subject){summary.style.display='none';chartCard.classList.remove('show');state.style.display='grid';state.textContent='請先選擇科目';hideTip();return}const groups=filteredGroups();lastGroups=groups;summary.style.display='flex';document.getElementById('countText').textContent=`符合條件：${groups.length} 人`;document.getElementById('summaryText').textContent=`${labelPos(positionFilter)}｜${labelChange(changeFilter)}`;state.style.display='none';chartCard.classList.add('show');const rangeText=rangeMode==='all'?'全部':rangeMode==='custom'?`最近 ${customN} 次`:`最近 ${rangeMode} 次`;document.getElementById('chartSub').textContent=`${subject}｜${rangeText}`;rebuildFocus(groups);draw(groups)}
+subjectEl.addEventListener('change',()=>{subject=subjectEl.value;focusSeat='';render()});
+document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{rangeMode=b.dataset.range;document.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x===b));document.getElementById('customRow').classList.toggle('show',rangeMode==='custom');focusSeat='';if(rangeMode!=='custom')render()}));
+document.querySelectorAll('[data-position]').forEach(b=>b.addEventListener('click',()=>{positionFilter=b.dataset.position;document.querySelectorAll('[data-position]').forEach(x=>x.classList.toggle('active',x===b));focusSeat='';render()}));
+document.querySelectorAll('[data-change]').forEach(b=>b.addEventListener('click',()=>{changeFilter=b.dataset.change;document.querySelectorAll('[data-change]').forEach(x=>x.classList.toggle('active',x===b));focusSeat='';render()}));
+document.getElementById('applyCustom').addEventListener('click',()=>{customN=Math.max(1,Math.floor(Number(document.getElementById('customN').value)||1));document.getElementById('customN').value=customN;focusSeat='';render()});
+focus.addEventListener('change',()=>{focusSeat=focus.value;hideTip();draw(lastGroups)});
+document.getElementById('clearFilters').addEventListener('click',()=>{positionFilter='all';changeFilter='all';document.querySelectorAll('[data-position]').forEach(x=>x.classList.toggle('active',x.dataset.position==='all'));document.querySelectorAll('[data-change]').forEach(x=>x.classList.toggle('active',x.dataset.change==='all'));focusSeat='';render()});
+document.getElementById('closeBtn').addEventListener('click',()=>window.close());document.addEventListener('click',e=>{if(!e.target.closest('.hit')&&!e.target.closest('.tip'))hideTip()});let rt=0;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(subject)draw(lastGroups)},120)});
+})();
+</script>
+</body>
+</html>
