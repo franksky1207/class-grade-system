@@ -142,6 +142,15 @@
     document.head.appendChild(script);
   }
 
+  function loadStudentSessionReset() {
+    if (document.querySelector('script[data-student-session-reset]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/student-session-reset.js?v=1';
+    script.async = false;
+    script.dataset.studentSessionReset = '1';
+    document.head.appendChild(script);
+  }
+
   function loadRecordCopyTable() {
     if (document.querySelector('script[data-record-copy-table]')) return;
     const script = document.createElement('script');
@@ -161,5 +170,6 @@
   loadParentSubjectTouchDrag();
   loadManualExamContentFields();
   loadEntrySessionReset();
+  loadStudentSessionReset();
   loadRecordCopyTable();
 })();
