@@ -71,6 +71,12 @@
     try {
       if (typeof app === 'undefined') return;
       app.ovStudents = [];
+      app.ovRange = 'n10';
+      app.ovCount = 20;
+      app.ovStart = '';
+      app.ovEnd = '';
+      const subject = document.getElementById('overviewSubject');
+      if (subject) subject.value = '';
       if (typeof save === 'function') save();
     } catch (_) {}
   }
