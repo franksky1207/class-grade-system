@@ -25,11 +25,17 @@
     return c.spreadsheetId;
   }
 
-  async function clearSheetColumns(id,sheetName,columns){
-    const range=encodeURIComponent(`'${sheetName}'!${columns}`);
-    await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}/values/${range}:clear`,{
-      method:'POST',body:'{}'
-    });
+  async function getExistingCounts(id){
+    const params=new URLSearchParams();
+    params.append('ranges',"'考試資料'!A:C");
+    params.append('ranges',"'成績資料'!A:F");
+    params.set('majorDimension','ROWS');
+    const data=await (await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}/values:batchGet?${params.toString()}`)).json();
+    const ranges=Array.isArray(data.valueRanges)?data.valueRanges:[];
+    return {
+      exam:Array.isArray(ranges[0]?.values)?ranges[0].values.length:0,
+      grade:Array.isArray(ranges[1]?.values)?ranges[1].values.length:0
+    };
   }
 
   async function syncExamsAndGrades(c){
@@ -51,17 +57,23 @@
       });
     });
 
-    // Clear first so deleted exams/scores never remain as stale rows in Sheets.
-    await clearSheetColumns(id,'考試資料','A:C');
-    await clearSheetColumns(id,'成績資料','A:F');
+    // 先讀取目前使用列數，再以單一 batchUpdate 同時覆寫新資料與多餘舊列。
+    // 不先 clear，避免網路中斷時出現「舊資料已清空、新資料尚未寫回」的空窗。
+    const old=await getExistingCounts(id);
+    const examTarget=Math.max(1,old.exam,examRows.length);
+    const gradeTarget=Math.max(1,old.grade,gradeRows.length);
+    const examValues=examRows.slice();
+    const gradeValues=gradeRows.slice();
+    while(examValues.length<examTarget) examValues.push(['','','']);
+    while(gradeValues.length<gradeTarget) gradeValues.push(['','','','','','']);
 
     await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}/values:batchUpdate`,{
       method:'POST',
       body:JSON.stringify({
         valueInputOption:'RAW',
         data:[
-          {range:`'考試資料'!A1:C${Math.max(1,examRows.length)}`,values:examRows},
-          {range:`'成績資料'!A1:F${Math.max(1,gradeRows.length)}`,values:gradeRows}
+          {range:`'考試資料'!A1:C${examTarget}`,values:examValues},
+          {range:`'成績資料'!A1:F${gradeTarget}`,values:gradeValues}
         ]
       })
     });
