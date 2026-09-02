@@ -11,6 +11,7 @@
   let draftDirty = false;
   let pendingSnapshot = null;
   let syncAttemptActive = false;
+  let editingExamRef = null;
 
   function localYmd(d = new Date()) {
     const y = d.getFullYear();
@@ -24,18 +25,24 @@
   function savePending(c) {
     if (!c) return;
     pendingSnapshot = { classId: c.id, classData: deepClone(c), savedAt: Date.now() };
-    try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(pendingSnapshot)); } catch (_) {}
+    const raw = JSON.stringify(pendingSnapshot);
+    try { sessionStorage.setItem(PENDING_KEY, raw); } catch (_) {}
+    try { localStorage.setItem(PENDING_KEY, raw); } catch (_) {}
   }
 
   function loadPending() {
     if (pendingSnapshot) return pendingSnapshot;
-    try { const raw = sessionStorage.getItem(PENDING_KEY); if (raw) pendingSnapshot = JSON.parse(raw); } catch (_) {}
+    try {
+      const raw = localStorage.getItem(PENDING_KEY) || sessionStorage.getItem(PENDING_KEY);
+      if (raw) pendingSnapshot = JSON.parse(raw);
+    } catch (_) {}
     return pendingSnapshot;
   }
 
   function clearPending() {
     pendingSnapshot = null;
     try { sessionStorage.removeItem(PENDING_KEY); } catch (_) {}
+    try { localStorage.removeItem(PENDING_KEY); } catch (_) {}
     removeRetryPanel();
   }
 
@@ -47,6 +54,20 @@
   function hasUnsaved() {
     const status = document.getElementById('saveStatus')?.textContent || '';
     return draftDirty || !!loadPending() || status.includes('儲存中') || status.includes('儲存失敗');
+  }
+
+  function installSaveStatusGuard() {
+    if (typeof window.save !== 'function' || window.save.__googleStatusGuarded) return;
+    const original = window.save;
+    const wrapped = function(...args) {
+      const status = document.getElementById('saveStatus');
+      const before = status?.textContent || '';
+      const result = original.apply(this, args);
+      if (status) status.textContent = before;
+      return result;
+    };
+    wrapped.__googleStatusGuarded = true;
+    window.save = wrapped;
   }
 
   function syncLoginHeader() {
@@ -93,7 +114,6 @@
         return;
       }
 
-      // 使用者已明確放棄這次未儲存輸入；離開後不應持續警告。
       markDraft(false);
       setTimeout(() => {
         const entryStillActive = document.getElementById('entry')?.classList.contains('active');
@@ -101,7 +121,6 @@
       }, 0);
     }, true);
 
-    // 若已離開成績輸入頁，避免舊工作階段留下的草稿旗標一直干擾主介面。
     const entry = document.getElementById('entry');
     if (entry) {
       new MutationObserver(() => {
@@ -116,20 +135,46 @@
     });
   }
 
+  function examKey(date, subject, name) {
+    return [String(date||'').trim(), String(subject||'').trim(), String(name||'').trim()].join('\u0001');
+  }
+
   function installDuplicateManualExamGuard() {
     document.addEventListener('click', (e) => {
       const b = e.target?.closest?.('button');
-      if (b?.id !== 'saveManualExam') return;
+      if (!b) return;
       const c = typeof currentClass === 'function' ? currentClass() : null;
-      if (!c) return;
-      const date = document.getElementById('manualDate')?.value || '';
-      const subject = document.getElementById('manualSubject')?.value?.trim() || '';
-      const name = document.getElementById('manualName')?.value?.trim() || '';
-      if (!date || !subject || !name) return;
-      const exists = (c.exams || []).some(x => String(x.date||'')===date && String(x.subject||'').trim()===subject && String(x.name||'').trim()===name);
-      if (!exists) return;
-      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-      alert('這次考試已經存在。請到「考試紀錄」編輯原本的考試。');
+
+      if (b.dataset?.edit && c) {
+        editingExamRef = c.exams?.[Number(b.dataset.edit)] || null;
+        return;
+      }
+
+      if (b.id === 'saveManualExam') {
+        if (!c) return;
+        const date = document.getElementById('manualDate')?.value || '';
+        const subject = document.getElementById('manualSubject')?.value?.trim() || '';
+        const name = document.getElementById('manualName')?.value?.trim() || '';
+        if (!date || !subject || !name) return;
+        const exists = (c.exams || []).some(x => examKey(x.date,x.subject,x.name)===examKey(date,subject,name));
+        if (!exists) return;
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        alert('這次考試已經存在。請到「考試紀錄」編輯原本的考試。');
+        return;
+      }
+
+      if (b.id === 'saveExamEdit') {
+        if (!c || !editingExamRef) return;
+        const date = document.getElementById('editDate')?.value || '';
+        const subject = document.getElementById('editSubject')?.value?.trim() || '';
+        const name = document.getElementById('editName')?.value?.trim() || '';
+        if (!date || !subject || !name) return;
+        const key = examKey(date,subject,name);
+        const exists = (c.exams || []).some(x => x !== editingExamRef && examKey(x.date,x.subject,x.name)===key);
+        if (!exists) return;
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        alert('已經有相同日期、科目與考試名稱的考試，請使用不同名稱或日期。');
+      }
     }, true);
   }
 
@@ -242,6 +287,8 @@
     const token = await window.GoogleAuth.getAccessToken();
     const rows = await store.readIndexRows(indexId);
     for (const row of rows) {
+      const archived = /^(true|1|yes)$/i.test(String(row?.[4]||'').trim());
+      if (archived) continue;
       const spreadsheetId = String(row?.[3]||'').trim();
       if (!spreadsheetId) continue;
       const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=sheets.properties`, {headers:{Authorization:`Bearer ${token}`}});
@@ -288,6 +335,7 @@
     try { Object.defineProperty(window,'GoogleDriveStore',{ configurable:true, get(){return existing;}, set(v){existing=wrap(v);} }); } catch (_) {}
   }
 
+  installSaveStatusGuard();
   installLoginHeaderGuard();
   installDraftGuard();
   installDuplicateManualExamGuard();
