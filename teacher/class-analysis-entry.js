@@ -42,6 +42,49 @@
     } catch (_) {}
   }
 
+  function installAnalysisHelp(win) {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      try {
+        if (win.closed) { clearInterval(timer); return; }
+        const doc = win.document;
+        const top = doc.querySelector('.top');
+        const panel = doc.querySelector('.panel');
+        const oldHelp = doc.querySelector('details.help');
+        if (!top || !panel) {
+          if (Date.now() - started > 15000) clearInterval(timer);
+          return;
+        }
+        if (doc.getElementById('classAnalysisHelpDetails')) { clearInterval(timer); return; }
+
+        if (oldHelp) oldHelp.style.display = 'none';
+        const style = doc.createElement('style');
+        style.textContent = '.analysis-help{margin:14px 0 0;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;padding:10px 12px;color:#475569;font-size:13px;line-height:1.72}.analysis-help summary{cursor:pointer;font-weight:900;color:#1d4ed8}.analysis-help-body{margin-top:9px;padding-top:9px;border-top:1px solid #dbeafe}.analysis-help-body p{margin:6px 0}.analysis-help-body ul{margin:6px 0 6px 18px;padding:0}.analysis-help-body li{margin:4px 0}.analysis-help-note{margin-top:8px;background:#fff;border:1px solid #e5e7eb;border-radius:9px;padding:8px 9px}';
+        doc.head.appendChild(style);
+
+        const details = doc.createElement('details');
+        details.id = 'classAnalysisHelpDetails';
+        details.className = 'analysis-help';
+        details.innerHTML = `
+          <summary>依位置與近期變化篩選學生，查看符合條件學生的班級百分位趨勢。　判定說明</summary>
+          <div class="analysis-help-body">
+            <p><b>位置與變化型態是兩個獨立條件。</b>兩邊都可以選「全部」，所以可以只看「高位」、只看「下降」，也可以交叉篩選例如「高位＋穩定」或「低位＋上升」。</p>
+            <p><b>位置分類：</b>依目前所選科目與分析範圍內，各學生的平均班級百分位判定：</p>
+            <ul><li>高位：平均百分位 ≥ 70</li><li>中位：平均百分位 ≥ 30 且未滿 70</li><li>低位：平均百分位 &lt; 30</li></ul>
+            <p><b>變化型態：</b>系統先計算所選範圍內百分位的整體線性趨勢。整體上升幅度 ≥ 12 個百分位點判為「上升」；≤ -12 判為「下降」。若未達上升／下降門檻，但相鄰考試百分位的平均絕對變動 ≥ 15，判為「波動較大」；其餘判為「穩定」。</p>
+            <p><b>聚焦學生：</b>篩選後可由「聚焦學生」選擇座號＋姓名。選定後該生線條會加粗，其他學生淡化；選回「全部學生」則回到群體視圖。</p>
+            <p><b>節點資料：</b>桌機滑過、手機點擊節點，可查看日期、學生、科目、完整考試內容、原始分數、班平均、班級百分位、名次與應試人數。</p>
+            <p><b>分析範圍：</b>可選近5次、近10次、近15次、自訂最近 N 次或全部。若學生該科有效成績不足所選次數，就依現有資料計算。空白不計，0 分有效。</p>
+            <div class="analysis-help-note"><b>資料處理：</b>所有分類、百分位與圖表都只在瀏覽器即時計算，不新增欄位、不修改原始成績，也不會寫回 Google 試算表。</div>
+          </div>`;
+        panel.insertAdjacentElement('afterend', details);
+        clearInterval(timer);
+      } catch (_) {
+        if (Date.now() - started > 15000) clearInterval(timer);
+      }
+    }, 100);
+  }
+
   function openAnalysis() {
     const payload = compactPayload(current());
     if (!payload) return;
@@ -55,6 +98,7 @@
 
     try {
       win.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ data: payload, savedAt: Date.now() }));
+      installAnalysisHelp(win);
       win.location.replace(`${location.origin}/teacher/class-analysis/`);
     } catch (err) {
       try {
@@ -87,7 +131,7 @@
     button.className = 'btn soft';
     button.dataset.classAnalysis = '1';
     button.textContent = '班級分析';
-    button.title = '開啟全班百分位趨勢分析';
+    button.title = '依百分位位置與近期變化分析全班學生';
     button.addEventListener('click', openAnalysis);
     actions.insertBefore(button, back);
     return true;
