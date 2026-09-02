@@ -272,9 +272,16 @@
 
   function tryAutoRestore() {
     if (!restoreStoredSession()) return;
-    const loginBtn = document.getElementById('loginBtn');
-    if (!loginBtn) return;
-    setTimeout(() => { if (!loginBtn.disabled) loginBtn.click(); }, 0);
+    const startedAt = Date.now();
+    const tryRun = () => {
+      const loginBtn = document.getElementById('loginBtn');
+      if (loginBtn && typeof loginBtn.onclick === 'function' && !loginBtn.disabled) {
+        loginBtn.click();
+        return;
+      }
+      if (Date.now() - startedAt < 3000) setTimeout(tryRun, 50);
+    };
+    tryRun();
   }
 
   function loadProductionSafety() {
