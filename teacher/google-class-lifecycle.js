@@ -33,14 +33,22 @@
   }
 
   async function rewriteIndexRows(indexId, rows) {
-    const clearRange = encodeURIComponent(`'${INDEX_SHEET_NAME}'!A2:G`);
-    await authFetch(`${SHEETS_API}/${encodeURIComponent(indexId)}/values/${clearRange}:clear`, {
-      method: 'POST', body: '{}'
+    // 不先 clear。先讀目前列數，再用一次 PUT 覆寫新資料並以空列覆蓋多餘舊資料，
+    // 避免發生「索引已清空，但下一個寫入請求失敗」的空窗。
+    const existing = await readIndexRows(indexId);
+    const targetRows = Math.max(existing.length, rows.length);
+    if (!targetRows) return;
+
+    const values = rows.map(row => {
+      const out = Array.isArray(row) ? row.slice(0, 7) : [];
+      while (out.length < 7) out.push('');
+      return out;
     });
-    if (!rows.length) return;
-    const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!A2:G${rows.length + 1}`);
+    while (values.length < targetRows) values.push(['','','','','','','']);
+
+    const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!A2:G${targetRows + 1}`);
     await authFetch(`${SHEETS_API}/${encodeURIComponent(indexId)}/values/${range}?valueInputOption=RAW`, {
-      method: 'PUT', body: JSON.stringify({ majorDimension: 'ROWS', values: rows })
+      method: 'PUT', body: JSON.stringify({ majorDimension: 'ROWS', values })
     });
   }
 
