@@ -28,6 +28,39 @@
     return c.spreadsheetId;
   }
 
+  async function ensureRowCapacity(id,requirements={}){
+    const entries=Object.entries(requirements)
+      .map(([title,rows])=>[title,Math.max(1,Number(rows)||1)])
+      .filter(([,rows])=>rows>0);
+    if(!entries.length) return;
+
+    const meta=await (await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}?fields=sheets(properties(sheetId,title,gridProperties(rowCount)))`)).json();
+    const props=Array.isArray(meta?.sheets)?meta.sheets.map(s=>s?.properties).filter(Boolean):[];
+    const requests=[];
+
+    for(const [title,requiredRows] of entries){
+      const sheet=props.find(p=>p.title===title);
+      if(!sheet) throw new Error(`找不到「${title}」工作表。`);
+      const currentRows=Math.max(0,Number(sheet?.gridProperties?.rowCount)||0);
+      if(requiredRows>currentRows){
+        requests.push({
+          appendDimension:{
+            sheetId:sheet.sheetId,
+            dimension:'ROWS',
+            length:requiredRows-currentRows
+          }
+        });
+      }
+    }
+
+    if(requests.length){
+      await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}:batchUpdate`,{
+        method:'POST',
+        body:JSON.stringify({requests})
+      });
+    }
+  }
+
   async function readCurrentRows(id){
     const params=new URLSearchParams();
     params.append('ranges',"'考試資料'!A:C");
@@ -98,6 +131,9 @@
     const gradeTarget=Math.max(1,rows.grades.length,gradeRows.length);
     while(examRows.length<examTarget) examRows.push(['','','']);
     while(gradeRows.length<gradeTarget) gradeRows.push(['','','','','','']);
+
+    await ensureRowCapacity(id,{'考試資料':examTarget,'成績資料':gradeTarget});
+
     await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}/values:batchUpdate`,{
       method:'POST',body:JSON.stringify({valueInputOption:'RAW',data:[
         {range:`'考試資料'!A1:C${examTarget}`,values:examRows},
@@ -151,6 +187,11 @@
         nextGradeRow=end+1;
       }
     }
+
+    await ensureRowCapacity(id,{
+      '考試資料':Math.max(1,nextExamRow-1),
+      '成績資料':Math.max(1,nextGradeRow-1)
+    });
 
     await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}/values:batchUpdate`,{
       method:'POST',body:JSON.stringify({valueInputOption:'RAW',data})
