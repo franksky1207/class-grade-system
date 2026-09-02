@@ -60,14 +60,14 @@
         if (doc.getElementById('trendHelpDetails')) { clearInterval(timer); return; }
 
         const style = doc.createElement('style');
-        style.textContent = '.trend-help{margin:0 0 14px;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;padding:10px 12px;color:#475569;font-size:13px;line-height:1.7}.trend-help summary{cursor:pointer;font-weight:900;color:#1d4ed8}.trend-help-body{margin-top:9px;padding-top:9px;border-top:1px solid #dbeafe}.trend-help-body p{margin:6px 0}.trend-help-formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#fff;border:1px solid #e5e7eb;border-radius:9px;padding:8px 9px;margin:8px 0;overflow:auto}';
+        style.textContent = '.trend-help{margin:0 0 14px;border:1px solid #bfdbfe;background:#fff;border-radius:14px;overflow:hidden;color:#475569;font-size:13px;line-height:1.7;box-shadow:0 4px 14px rgba(37,99,235,.06)}.trend-help summary{cursor:pointer;list-style:none;padding:12px 13px;display:flex;align-items:center;gap:11px}.trend-help summary::-webkit-details-marker{display:none}.trend-help-icon{flex:0 0 34px;width:34px;height:34px;border-radius:10px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:18px;font-weight:900}.trend-help-copy{min-width:0;flex:1}.trend-help-title{font-size:14px;font-weight:900;color:#1e3a8a;line-height:1.35}.trend-help-sub{font-size:12px;color:#64748b;margin-top:2px;line-height:1.45}.trend-help-action{flex:0 0 auto;color:#2563eb;font-size:12px;font-weight:900;white-space:nowrap;border:1px solid #bfdbfe;background:#eff6ff;border-radius:999px;padding:5px 9px}.trend-help[open] .trend-help-action{background:#2563eb;color:#fff;border-color:#2563eb}.trend-help-body{padding:11px 13px 12px;border-top:1px solid #dbeafe;background:#f8fbff}.trend-help-body p{margin:6px 0}.trend-help-formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#fff;border:1px solid #e5e7eb;border-radius:9px;padding:8px 9px;margin:8px 0;overflow:auto}@media(max-width:560px){.trend-help summary{align-items:flex-start}.trend-help-action{margin-top:3px}.trend-help-sub{max-width:210px}}';
         doc.head.appendChild(style);
 
         const details = doc.createElement('details');
         details.id = 'trendHelpDetails';
         details.className = 'trend-help';
         details.innerHTML = `
-          <summary>以班級百分位觀察學生在不同考試中的相對位置變化。　判讀說明</summary>
+          <summary><span class="trend-help-icon">ⓘ</span><span class="trend-help-copy"><span class="trend-help-title">班級百分位怎麼看？</span><span class="trend-help-sub">了解百分位、分析範圍與圖表節點</span></span><span class="trend-help-action">查看判讀說明 ▾</span></summary>
           <div class="trend-help-body">
             <p><b>班級百分位：</b>每次考試都依當次實際有成績的學生重新計算。百分位越高，代表該次考試在班級中的相對位置越前。</p>
             <div class="trend-help-formula">百分位＝（低於該生成績的人數＋0.5×同分人數）÷實際應試人數×100</div>
@@ -77,6 +77,10 @@
             <p><b>節點資料：</b>桌機滑過、手機點擊節點，可查看日期、科目、完整考試內容、原始分數、班平均、班級百分位、名次與應試人數。</p>
             <p><b>資料處理：</b>所有分析都在瀏覽器即時計算，不新增 Google Sheet 欄位，也不會寫回 Google 試算表。</p>
           </div>`;
+        details.addEventListener('toggle', () => {
+          const action = details.querySelector('.trend-help-action');
+          if (action) action.textContent = details.open ? '收合判讀說明 ▴' : '查看判讀說明 ▾';
+        });
         top.insertAdjacentElement('afterend', details);
         clearInterval(timer);
       } catch (_) {
