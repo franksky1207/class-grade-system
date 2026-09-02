@@ -196,6 +196,15 @@
     document.head.appendChild(script);
   }
 
+  function loadHelpVisibility() {
+    if (document.querySelector('script[data-help-visibility]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/help-visibility.js?v=1';
+    script.async = false;
+    script.dataset.helpVisibility = '1';
+    document.head.appendChild(script);
+  }
+
   document.addEventListener('click', event => {
     if (event.target?.closest?.('button[data-page="settings"]')) setTimeout(ensurePanel, 0);
   }, true);
@@ -212,4 +221,5 @@
   loadStudentTrendAnalysis();
   loadClassAnalysisEntry();
   loadHelpEnhancement();
+  loadHelpVisibility();
 })();
