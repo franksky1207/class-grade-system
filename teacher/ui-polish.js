@@ -45,6 +45,8 @@
         .page>.card.pad>.head .title{font-size:21px}
         .mobile-back{width:42px;height:42px;min-width:42px;padding:0;border-radius:999px;font-size:0;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
         .mobile-back::before{content:'←';font-size:22px;line-height:1;font-weight:800}
+        .dashboard-low-card{display:block;width:100%;max-width:none;min-width:0}
+        .dashboard-low-card #lowTable{width:100%;max-width:100%}
         #overviewTable .sticky-table th:nth-child(1),
         #overviewTable .sticky-table td:nth-child(1){min-width:54px;width:54px;max-width:54px;padding-left:6px;padding-right:6px}
         #overviewTable .sticky-table th:nth-child(2),
@@ -74,6 +76,12 @@
       btn.setAttribute('aria-label', '回主介面');
       btn.setAttribute('title', '回主介面');
     });
+  }
+
+  function enhanceLowDashboardCard() {
+    const lowTable = document.getElementById('lowTable');
+    const card = lowTable?.closest('.card');
+    if (card) card.classList.add('dashboard-low-card');
   }
 
   function ensureLastSyncText() {
@@ -130,7 +138,7 @@
         try { localStorage.setItem(LAST_SYNC_KEY, ts); } catch (_) {}
         renderLastSync();
       }
-    }).observe(status, { childList:true, characterData:true, subtree:true });
+    }).observe(status, { childList:true, characterData:true,subtree:true });
   }
 
   function showOverviewSwipeHint() {
@@ -244,6 +252,7 @@
 
   injectStyles();
   enhanceBackButtons();
+  enhanceLowDashboardCard();
   renderLastSync();
   installSyncTimestampObserver();
   installOverviewSwipeHint();
