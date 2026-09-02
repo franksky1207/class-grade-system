@@ -42,6 +42,19 @@
       if (loginBtn) loginBtn.textContent = '使用 Google 帳號登入';
     }
 
+    const settingsSubtitle = document.querySelector('#settings .page-subtitle');
+    if (settingsSubtitle) settingsSubtitle.textContent = '班級資料管理、資料健檢與 Google 雲端設定';
+    document.querySelectorAll('#settings h3').forEach(h => {
+      if (h.textContent.includes('Google 雲端資料')) h.textContent = 'Google 雲端資料';
+    });
+    const cloudPanel = [...document.querySelectorAll('#settings .subpanel')].find(x => x.textContent.includes('Google 雲端資料'));
+    if (cloudPanel) {
+      const notice = cloudPanel.querySelector('.notice');
+      if (notice) notice.textContent = '每個「班級＋學年度＋學期」使用獨立 Google 試算表，另有班級索引資料。網站以 Spreadsheet ID 與班級識別資料定位，不依賴檔名。';
+      const small = cloudPanel.querySelector('p.small');
+      if (small) small.textContent = '右上角會顯示「儲存中…／✓ 已儲存／⚠ 儲存失敗」，班級資料會同步到你的 Google Drive / Google Sheets。';
+    }
+
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
