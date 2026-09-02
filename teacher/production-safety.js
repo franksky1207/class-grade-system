@@ -20,7 +20,6 @@
   }
 
   function deepClone(v) { try { return JSON.parse(JSON.stringify(v)); } catch (_) { return null; } }
-  function esc(v) { return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
   function savePending(c) {
     if (!c) return;
@@ -113,37 +112,6 @@
       e.preventDefault();
       e.returnValue = '';
     });
-  }
-
-  function installFilterDefaults() {
-    function resetOverview() {
-      try {
-        if (typeof app !== 'undefined') {
-          app.ovRange = 'n10';
-          app.ovStudents = [];
-          app.ovCount = 20;
-          app.ovStart = '';
-          app.ovEnd = '';
-        }
-        const subject = document.getElementById('overviewSubject');
-        if (subject) subject.value = '';
-      } catch (_) {}
-    }
-
-    function resetRecords() {
-      const ids = ['recordStart','recordEnd','recordKey'];
-      ids.forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-      const subject=document.getElementById('recordSubject'); if(subject) subject.value='';
-      const sort=document.getElementById('recordSort'); if(sort) sort.value='desc';
-    }
-
-    document.addEventListener('click', e => {
-      const b=e.target?.closest?.('button');
-      if(!b) return;
-      if(b.dataset?.page==='overview') resetOverview();
-      if(b.dataset?.page==='records') resetRecords();
-      if(b.id==='loginBtn') { resetOverview(); resetRecords(); }
-    }, true);
   }
 
   function installDuplicateManualExamGuard() {
@@ -318,99 +286,10 @@
     try { Object.defineProperty(window,'GoogleDriveStore',{ configurable:true, get(){return existing;}, set(v){existing=wrap(v);} }); } catch (_) {}
   }
 
-  function findDuplicates(values) {
-    const seen=new Set(), dup=new Set();
-    values.filter(Boolean).forEach(v=>{ const k=String(v).trim(); if(!k) return; if(seen.has(k)) dup.add(k); else seen.add(k); });
-    return [...dup];
-  }
-
-  function installDataHealthCheck() {
-    const settings = document.getElementById('settings');
-    const settingsCard = settings?.querySelector(':scope > .card.pad');
-    if (!settingsCard || document.getElementById('dataHealthPanel')) return;
-
-    const panel=document.createElement('div');
-    panel.id='dataHealthPanel';
-    panel.className='card pad';
-    panel.style.marginTop='14px';
-    panel.innerHTML=`<div class="head"><div><h3 style="margin:0">資料健檢</h3><div class="small" style="margin-top:4px">檢查目前班級、Google 索引、工作表結構與重複資料。</div></div><button class="btn" id="runDataHealthCheck">開始健檢</button></div><div id="dataHealthResult" class="notice" style="display:none"></div>`;
-    const logout=document.getElementById('googleLogoutPanel');
-    if(logout) settingsCard.insertBefore(panel,logout); else settingsCard.appendChild(panel);
-    document.getElementById('runDataHealthCheck')?.addEventListener('click', runDataHealthCheck);
-  }
-
-  async function runDataHealthCheck() {
-    const btn=document.getElementById('runDataHealthCheck');
-    const out=document.getElementById('dataHealthResult');
-    if(!btn||!out) return;
-    btn.disabled=true; btn.textContent='檢查中…'; out.style.display='block'; out.innerHTML='正在檢查資料……';
-
-    const results=[];
-    const add=(ok,text)=>results.push({ok,text});
-    try {
-      if(!window.GoogleAuth?.isSignedIn()) throw new Error('Google 登入已逾時，請重新登入後再健檢。');
-      const c=typeof currentClass==='function'?currentClass():null;
-      if(!c) throw new Error('目前沒有可健檢的使用中班級。');
-
-      add(true,`目前班級：${c.name}｜${c.year}學年度第${c.term}學期`);
-      add(true,`學生 ${c.students?.length||0} 位｜考試 ${c.exams?.length||0} 場`);
-
-      const dupSeats=findDuplicates((c.students||[]).map(s=>s.seat));
-      add(!dupSeats.length, dupSeats.length?`重複座號：${dupSeats.join('、')}`:'無重複座號');
-      const dupAccounts=findDuplicates((c.students||[]).map(s=>String(s.account||'').trim()).filter(Boolean));
-      add(!dupAccounts.length, dupAccounts.length?`重複學號：${dupAccounts.join('、')}`:'無重複非空學號');
-      const examKeys=(c.exams||[]).map(e=>`${String(e.date||'').trim()}\u0001${String(e.subject||'').trim()}\u0001${String(e.name||'').trim()}`);
-      const dupExams=findDuplicates(examKeys);
-      add(!dupExams.length, dupExams.length?`發現 ${dupExams.length} 組重複考試`:'無重複考試');
-
-      const token=await window.GoogleAuth.getAccessToken();
-      let store=window.GoogleDriveStore;
-      if(!store) {
-        await loadScript('teacher/google-drive-store.js',()=>!!window.GoogleDriveStore);
-        store=window.GoogleDriveStore;
-      }
-      const index=window.classGradeSystemIndex || await store.ensureTeacherIndex();
-      add(!!index?.id,'班級索引可正常存取');
-      const rows=await store.readIndexRows(index.id);
-      const identities=rows.map(r=>`${String(r?.[0]||'').trim()}\u0001${String(r?.[1]||'').trim()}\u0001${String(r?.[2]||'').trim()}`);
-      const dupClassRows=findDuplicates(identities);
-      add(!dupClassRows.length,dupClassRows.length?`班級索引有 ${dupClassRows.length} 組重複班級學期`:'班級索引無重複班級學期');
-
-      const sid=String(c.spreadsheetId||'').trim();
-      if(!sid) {
-        add(false,'目前班級缺少 Spreadsheet ID');
-      } else {
-        const metaRes=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sid)}?fields=sheets.properties`,{headers:{Authorization:`Bearer ${token}`}});
-        if(!metaRes.ok) throw new Error('目前班級的 Google 試算表無法讀取。');
-        const meta=await metaRes.json();
-        const names=new Set((meta.sheets||[]).map(s=>s.properties?.title).filter(Boolean));
-        for(const [sheet,headers] of Object.entries(REQUIRED_SHEETS)) {
-          if(!names.has(sheet)) { add(false,`缺少工作表「${sheet}」`); continue; }
-          const range=encodeURIComponent(`'${sheet}'!1:1`);
-          const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sid)}/values/${range}`,{headers:{Authorization:`Bearer ${token}`}});
-          if(!r.ok) { add(false,`無法讀取「${sheet}」標題列`); continue; }
-          const data=await r.json();
-          const got=(data.values?.[0]||[]).slice(0,headers.length).map(x=>String(x).trim());
-          const ok=headers.every((x,i)=>got[i]===x);
-          add(ok,ok?`「${sheet}」結構正常`:`「${sheet}」標題列需要修復`);
-        }
-      }
-
-      const bad=results.filter(x=>!x.ok).length;
-      out.innerHTML=`<b>${bad?'健檢完成：發現需要注意的項目':'✓ 健檢完成：目前資料正常'}</b><div style="margin-top:8px;line-height:1.8">${results.map(r=>`<div>${r.ok?'✓':'⚠'} ${esc(r.text)}</div>`).join('')}</div>`;
-    } catch(err) {
-      out.innerHTML=`<b>⚠ 健檢未完成</b><div style="margin-top:6px">${esc(err?.message||'檢查時發生錯誤')}</div>`;
-    } finally {
-      btn.disabled=false; btn.textContent='重新健檢';
-    }
-  }
-
   installLoginHeaderGuard();
   installDraftGuard();
-  installFilterDefaults();
   installDuplicateManualExamGuard();
   installPendingSyncGuard();
   installDriveStorePreflight();
-  installDataHealthCheck();
   setTimeout(installLocalDateRangeFix,0);
 })();
