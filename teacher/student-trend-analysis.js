@@ -8,6 +8,11 @@
     try { return typeof currentClass === 'function' ? currentClass() : null; }
     catch (_) { return null; }
   }
+  function valid(v) {
+    if (v === null || v === undefined || text(v) === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
 
   function compactClassPayload(c, studentIndex) {
     const student = c?.students?.[studentIndex];
@@ -45,7 +50,54 @@
     } catch (_) {}
   }
 
-  function installTrendHelp(win) {
+  function regressionTotal(points) {
+    const n = points.length;
+    if (n < 2) return 0;
+    const xm = (n - 1) / 2;
+    const ym = points.reduce((s, p) => s + p.percentile, 0) / n;
+    let num = 0, den = 0;
+    points.forEach((p, i) => { num += (i - xm) * (p.percentile - ym); den += (i - xm) * (i - xm); });
+    return den ? (num / den) * (n - 1) : 0;
+  }
+  function meanAbsStep(points) {
+    if (points.length < 2) return 0;
+    let sum = 0;
+    for (let i = 1; i < points.length; i++) sum += Math.abs(points[i].percentile - points[i - 1].percentile);
+    return sum / (points.length - 1);
+  }
+  function crossSubjectSummary(payload) {
+    const seat = text(payload?.student?.seat);
+    const groups = new Map();
+    (payload?.exams || []).forEach(exam => {
+      const ownRow = (exam.scores || []).find(r => text(r?.seat) === seat);
+      const own = ownRow ? valid(ownRow.value) : null;
+      if (own === null) return;
+      const scores = (exam.scores || []).map(r => valid(r?.value)).filter(v => v !== null);
+      if (!scores.length) return;
+      const lower = scores.filter(v => v < own).length;
+      const equal = scores.filter(v => v === own).length;
+      const point = { date:text(exam.date), sourceIndex:Number(exam.sourceIndex)||0, percentile:(lower + .5 * equal) / scores.length * 100 };
+      const subject = text(exam.subject);
+      if (!subject) return;
+      if (!groups.has(subject)) groups.set(subject, []);
+      groups.get(subject).push(point);
+    });
+    return [...groups.entries()].map(([subject, points]) => {
+      points.sort((a,b) => a.date.localeCompare(b.date) || a.sourceIndex - b.sourceIndex);
+      const recent = points.slice(-10);
+      const avg = recent.reduce((s,p) => s + p.percentile, 0) / recent.length;
+      const position = avg >= 70 ? '高位' : avg < 30 ? '低位' : '中位';
+      const trend = regressionTotal(recent), swing = meanAbsStep(recent);
+      let change = '穩定';
+      if (trend >= 12) change = '上升';
+      else if (trend <= -12) change = '下降';
+      else if (swing >= 15) change = '波動較大';
+      return { subject, avg, position, change, count:recent.length };
+    }).sort((a,b) => a.subject.localeCompare(b.subject, 'zh-Hant'));
+  }
+
+  function installTrendHelp(win, payload) {
+    const summaryRows = crossSubjectSummary(payload);
     const started = Date.now();
     const timer = setInterval(() => {
       try {
@@ -60,7 +112,7 @@
         if (doc.getElementById('trendHelpDetails')) { clearInterval(timer); return; }
 
         const style = doc.createElement('style');
-        style.textContent = '.trend-help{margin:0 0 14px;border:1px solid #bfdbfe;background:#fff;border-radius:14px;overflow:hidden;color:#475569;font-size:13px;line-height:1.7;box-shadow:0 4px 14px rgba(37,99,235,.06)}.trend-help summary{cursor:pointer;list-style:none;padding:12px 13px;display:flex;align-items:center;gap:11px}.trend-help summary::-webkit-details-marker{display:none}.trend-help-icon{flex:0 0 34px;width:34px;height:34px;border-radius:10px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:18px;font-weight:900}.trend-help-copy{min-width:0;flex:1}.trend-help-title{font-size:14px;font-weight:900;color:#1e3a8a;line-height:1.35}.trend-help-sub{font-size:12px;color:#64748b;margin-top:2px;line-height:1.45}.trend-help-action{flex:0 0 auto;color:#2563eb;font-size:12px;font-weight:900;white-space:nowrap;border:1px solid #bfdbfe;background:#eff6ff;border-radius:999px;padding:5px 9px}.trend-help[open] .trend-help-action{background:#2563eb;color:#fff;border-color:#2563eb}.trend-help-body{padding:11px 13px 12px;border-top:1px solid #dbeafe;background:#f8fbff}.trend-help-body p{margin:6px 0}.trend-help-formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#fff;border:1px solid #e5e7eb;border-radius:9px;padding:8px 9px;margin:8px 0;overflow:auto}@media(max-width:560px){.trend-help summary{align-items:flex-start}.trend-help-action{margin-top:3px}.trend-help-sub{max-width:210px}}';
+        style.textContent = '.trend-help{margin:0 0 14px;border:1px solid #bfdbfe;background:#fff;border-radius:14px;overflow:hidden;color:#475569;font-size:13px;line-height:1.7;box-shadow:0 4px 14px rgba(37,99,235,.06)}.trend-help summary{cursor:pointer;list-style:none;padding:12px 13px;display:flex;align-items:center;gap:11px}.trend-help summary::-webkit-details-marker{display:none}.trend-help-icon{flex:0 0 34px;width:34px;height:34px;border-radius:10px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:18px;font-weight:900}.trend-help-copy{min-width:0;flex:1}.trend-help-title{font-size:14px;font-weight:900;color:#1e3a8a;line-height:1.35}.trend-help-sub{font-size:12px;color:#64748b;margin-top:2px;line-height:1.45}.trend-help-action{flex:0 0 auto;color:#2563eb;font-size:12px;font-weight:900;white-space:nowrap;border:1px solid #bfdbfe;background:#eff6ff;border-radius:999px;padding:5px 9px}.trend-help[open] .trend-help-action{background:#2563eb;color:#fff;border-color:#2563eb}.trend-help-body{padding:11px 13px 12px;border-top:1px solid #dbeafe;background:#f8fbff}.trend-help-body p{margin:6px 0}.trend-help-formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#fff;border:1px solid #e5e7eb;border-radius:9px;padding:8px 9px;margin:8px 0;overflow:auto}.cross-summary{margin:0 0 14px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:13px;box-shadow:0 5px 18px rgba(15,23,42,.05)}.cross-summary-head{display:flex;justify-content:space-between;align-items:end;gap:10px;margin-bottom:10px}.cross-summary-title{font-size:16px;font-weight:900}.cross-summary-sub{font-size:12px;color:#64748b;margin-top:2px}.cross-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.cross-summary-card{border:1px solid #dbeafe;background:#f8fbff;border-radius:12px;padding:10px;text-align:left;cursor:pointer;color:#1f2937}.cross-summary-card:hover{background:#eff6ff;border-color:#93c5fd}.cross-summary-subject{font-weight:900;color:#1d4ed8}.cross-summary-tags{font-size:13px;font-weight:850;margin-top:4px}.cross-summary-percentile{font-size:11px;color:#64748b;margin-top:3px}@media(min-width:768px){.cross-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:560px){.trend-help summary{align-items:flex-start}.trend-help-action{margin-top:3px}.trend-help-sub{max-width:210px}.cross-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}';
         doc.head.appendChild(style);
 
         const details = doc.createElement('details');
@@ -82,6 +134,21 @@
           if (action) action.textContent = details.open ? '收合判讀說明 ▴' : '查看判讀說明 ▾';
         });
         top.insertAdjacentElement('afterend', details);
+
+        if (summaryRows.length) {
+          const summary = doc.createElement('section');
+          summary.id = 'crossSubjectSummary';
+          summary.className = 'cross-summary';
+          summary.innerHTML = `<div class="cross-summary-head"><div><div class="cross-summary-title">跨科摘要</div><div class="cross-summary-sub">各科最近最多 10 次有效成績｜點科目直接查看趨勢</div></div></div><div class="cross-summary-grid">${summaryRows.map(r=>`<button type="button" class="cross-summary-card" data-cross-subject="${String(r.subject).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}"><div class="cross-summary-subject">${String(r.subject).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div class="cross-summary-tags">${r.position}｜${r.change}</div><div class="cross-summary-percentile">平均百分位 ${r.avg.toFixed(1)}%｜${r.count} 次</div></button>`).join('')}</div>`;
+          details.insertAdjacentElement('afterend', summary);
+          summary.querySelectorAll('[data-cross-subject]').forEach(button => button.addEventListener('click', () => {
+            const select = doc.getElementById('subjectSelect');
+            if (!select) return;
+            select.value = button.dataset.crossSubject || '';
+            select.dispatchEvent(new win.Event('change', { bubbles:true }));
+            panel.scrollIntoView({ behavior:'smooth', block:'start' });
+          }));
+        }
         clearInterval(timer);
       } catch (_) {
         if (Date.now() - started > 15000) clearInterval(timer);
@@ -103,7 +170,7 @@
 
     try {
       win.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ data: payload, savedAt: Date.now() }));
-      installTrendHelp(win);
+      installTrendHelp(win, payload);
       win.location.replace(`${location.origin}/teacher/trend/`);
     } catch (err) {
       try {
