@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="description" content="家長與學生即時成績查詢" />
+<title>家長／學生查詢</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--line:#e5e7eb;--text:#111827;--muted:#6b7280;--primary:#2563eb;--danger:#dc2626;--shadow:0 14px 40px rgba(15,23,42,.08)}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#f8fbff 0%,#f5f7fb 45%,#eef2f7 100%);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;min-height:100vh}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px calc(24px + env(safe-area-inset-bottom))}
+.shell{width:min(100%,430px)}
+.brand{text-align:center;margin-bottom:22px}
+.brand .mark{width:54px;height:54px;border-radius:18px;margin:0 auto 12px;display:grid;place-items:center;background:#dbeafe;color:#1d4ed8;font-size:26px;font-weight:900}
+h1{font-size:27px;margin:0 0 8px;letter-spacing:.02em}
+.sub{font-size:14px;color:var(--muted);line-height:1.6;margin:0}
+.card{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:22px}
+label{display:block;font-size:14px;font-weight:800;color:#374151;margin-top:16px}
+label:first-of-type{margin-top:0}
+input{width:100%;margin-top:7px;border:1px solid #d1d5db;border-radius:13px;background:#fff;padding:14px 14px;font-size:17px;outline:none;transition:.15s}
+input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px #dbeafe}
+input::placeholder{color:#9ca3af}
+.hint{margin-top:7px;color:var(--muted);font-size:12px;line-height:1.5}
+button{width:100%;border:0;border-radius:13px;padding:14px 16px;font-size:17px;font-weight:800;margin-top:20px;background:var(--primary);color:#fff;cursor:pointer}
+button:disabled{opacity:.55;cursor:default}
+.status{min-height:24px;margin-top:13px;font-size:14px;line-height:1.6;text-align:center;color:var(--muted)}
+.status.error{color:var(--danger)}
+.status.success{color:#047857}
+.secure{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:12px;line-height:1.6;text-align:center}
+.success-card{display:none;text-align:center}
+.success-card.show{display:block}
+.success-card .ok{width:56px;height:56px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;background:#dcfce7;color:#15803d;font-size:28px;font-weight:900}
+.success-card h2{font-size:23px;margin:0 0 8px}
+.success-card p{margin:4px 0;color:var(--muted);line-height:1.6}
+.login-form.hidden{display:none}
+@media(min-width:768px){.card{padding:28px}.wrap{padding:40px}.shell{width:460px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="shell">
+    <div class="brand">
+      <div class="mark">成</div>
+      <h1>家長／學生查詢</h1>
+      <p class="sub">輸入學生資料後，即可查看目前公開學期的成績。</p>
+    </div>
+
+    <section class="card">
+      <form id="loginForm" class="login-form" novalidate>
+        <label for="account">學號</label>
+        <input id="account" name="account" type="text" inputmode="numeric" autocomplete="username" placeholder="請輸入學號" required />
+
+        <label for="last4">身分證後4碼</label>
+        <input id="last4" name="last4" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="請輸入4碼" required />
+        <div class="hint">若後4碼開頭為 0，請完整輸入 4 碼。</div>
+
+        <button id="loginBtn" type="submit">登入查詢</button>
+        <div id="status" class="status" aria-live="polite"></div>
+        <div class="secure">僅查詢目前公開班級；登入失敗時不會提示是否存在舊學期資料。</div>
+      </form>
+
+      <div id="successCard" class="success-card">
+        <div class="ok">✓</div>
+        <h2 id="studentName">登入成功</h2>
+        <p id="className"></p>
+        <p>第 7 步會在這裡接上正式家長首頁。</p>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+(() => {
+  const API = 'https://sphrceazgfrjtgeeikfp.supabase.co/functions/v1/parent-query-api';
+  const SESSION_KEY = 'class-grade-system-parent-session';
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const queryCode = String(pathParts[0] === 'p' ? pathParts[1] : '').trim().toLowerCase();
+
+  const form = document.getElementById('loginForm');
+  const account = document.getElementById('account');
+  const last4 = document.getElementById('last4');
+  const btn = document.getElementById('loginBtn');
+  const status = document.getElementById('status');
+  const successCard = document.getElementById('successCard');
+
+  function setStatus(message, type='') {
+    status.textContent = message || '';
+    status.className = `status${type ? ' ' + type : ''}`;
+  }
+
+  function showSuccess(data) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ queryCode, data, savedAt: Date.now() }));
+    form.classList.add('hidden');
+    successCard.classList.add('show');
+    document.getElementById('studentName').textContent = `${data.student?.name || '學生'}，登入成功`;
+    const c = data.class || {};
+    const term = c.term ? `第${c.term}學期` : '';
+    document.getElementById('className').textContent = [c.name, c.schoolYear ? `${c.schoolYear}學年度` : '', term].filter(Boolean).join('｜');
+  }
+
+  if (!/^[a-z0-9-]{4,32}$/.test(queryCode)) {
+    btn.disabled = true;
+    setStatus('查詢網址無效，請向老師確認正確網址。', 'error');
+    return;
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const studentAccount = account.value.trim();
+    const pass = last4.value.trim();
+    if (!studentAccount || !/^\d{4}$/.test(pass)) {
+      setStatus('請輸入學號與完整的身分證後4碼。', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '查詢中……';
+    setStatus('正在確認學生資料……');
+    try {
+      const res = await fetch(API, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ queryCode, studentAccount, last4: pass })
+      });
+      let data = {};
+      try { data = await res.json(); } catch (_) {}
+      if (!res.ok || !data?.ok) {
+        if (res.status === 503) throw new Error('查詢服務暫時無法使用，請稍後再試。');
+        throw new Error(data?.message || '查無符合的學生資料，請確認學號與身分證後4碼是否正確。');
+      }
+      setStatus('登入成功。', 'success');
+      showSuccess(data);
+    } catch (err) {
+      setStatus(err?.message || '查詢失敗，請稍後再試。', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '登入查詢';
+    }
+  });
+})();
+</script>
+</body>
+</html>
