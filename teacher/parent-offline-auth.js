@@ -118,7 +118,7 @@
   function loadParentSubjectTouchDrag() {
     if (document.querySelector('script[data-parent-subject-touch-drag]')) return;
     const script = document.createElement('script');
-    script.src = 'teacher/parent-subject-touch-drag.js?v=1';
+    script.src = 'teacher/parent-subject-touch-drag.js?v=2-visual';
     script.async = false;
     script.dataset.parentSubjectTouchDrag = '1';
     document.head.appendChild(script);
