@@ -43,20 +43,13 @@
       if(!sheet) throw new Error(`找不到「${title}」工作表。`);
       const currentRows=Math.max(0,Number(sheet?.gridProperties?.rowCount)||0);
       if(requiredRows>currentRows){
-        requests.push({
-          appendDimension:{
-            sheetId:sheet.sheetId,
-            dimension:'ROWS',
-            length:requiredRows-currentRows
-          }
-        });
+        requests.push({appendDimension:{sheetId:sheet.sheetId,dimension:'ROWS',length:requiredRows-currentRows}});
       }
     }
 
     if(requests.length){
       await authFetch(`${SHEETS_API}/${encodeURIComponent(id)}:batchUpdate`,{
-        method:'POST',
-        body:JSON.stringify({requests})
+        method:'POST',body:JSON.stringify({requests})
       });
     }
   }
@@ -168,13 +161,15 @@
       return {spreadsheetId:id,mode:'noop',examCount:(c.exams||[]).length};
     }
 
-    const data=[];
-    for(const key of removeKeys){
-      const exam=sheet.examMap.get(key);
-      if(exam) data.push({range:`'考試資料'!A${exam.row}:C${exam.row}`,values:[['','','']]});
-      for(const g of (sheet.gradeMap.get(key)||[])) data.push({range:`'成績資料'!A${g.row}:F${g.row}`,values:[['','','','','','']]});
+    // Editing or deleting an existing exam leaves holes in the sheet if handled
+    // incrementally. Compact only in those cases so normal new-exam saves remain
+    // lightweight while edited/deleted data stays contiguous and human-readable.
+    if(removeKeys.size){
+      const result=await fullSync(c,id,rows);
+      return {spreadsheetId:id,...result,compacted:true};
     }
 
+    const data=[];
     let nextExamRow=Math.max(2,rows.exams.length+1);
     let nextGradeRow=Math.max(2,rows.grades.length+1);
     for(const e of upserts){
@@ -197,7 +192,7 @@
       method:'POST',body:JSON.stringify({valueInputOption:'RAW',data})
     });
 
-    return {spreadsheetId:id,mode:'incremental',removed:removeKeys.size,upserted:upserts.length,examCount:(c.exams||[]).length};
+    return {spreadsheetId:id,mode:'incremental',removed:0,upserted:upserts.length,examCount:(c.exams||[]).length};
   }
 
   window.GoogleExamSync={syncExamsAndGrades};
