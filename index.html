@@ -150,7 +150,6 @@ tr:last-child td{border-bottom:none}
 .notice.soft-green{background:linear-gradient(180deg,#ecfdf5 0%,#f7fffb 100%);border-color:#a7f3d0}
 .small-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;background:#f3f4f6}
 
-
 .page-hero{display:flex;align-items:center;gap:12px}
 .page-icon{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:15px;font-size:24px;font-weight:700}
 .page-icon.blue{background:#dbeafe;color:#1d4ed8}
@@ -174,12 +173,10 @@ tr:last-child td{border-bottom:none}
 .empty-state .eicon{font-size:26px;display:block;margin-bottom:8px}
 #excelPreview .tablewrap, #overviewTable, #studentTable, #recordList .manage-row{margin-top:8px}
 
-
 .student-picker-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .student-pick{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff}
 .student-pick:hover{background:#f9fafb}
 @media(max-width:767px){.student-picker-grid{grid-template-columns:1fr 1fr}}
-
 
 .score-low{color:#9f1239;font-weight:800}
 
@@ -189,14 +186,13 @@ tr:last-child td{border-bottom:none}
 <header>
   <div class="header-inner">
     <div>
-      <div class="brand">班級成績管理系統</div><div class="small" style="margin-top:2px">教師端測試版</div>
+      <div class="brand">班級成績管理系統</div><div class="small" style="margin-top:2px">教師端</div>
       <div class="small" id="headerClassText">—</div>
     </div>
     <div class="top-actions">
       <select id="classSwitch" class="field class-switch"></select>
       <span class="save-status" id="saveStatus">✓ 已儲存</span>
       <button class="btn" id="helpBtn">？ 使用說明</button>
-      <button class="btn" id="demoBtn">測試資料</button>
     </div>
   </div>
 </header>
@@ -206,8 +202,8 @@ tr:last-child td{border-bottom:none}
 <section id="login" class="page active">
   <div class="card pad" style="max-width:560px;margin:60px auto">
     <h1 class="title">登入</h1>
-    <p class="subtitle">測試版使用模擬 Google 登入；正式版才會串接真正 Google 帳號與試算表。</p>
-    <button class="btn primary" id="loginBtn">使用 Google 帳號登入（測試）</button>
+    <p class="subtitle">使用 Google 帳號登入，班級資料將連接至你的 Google Drive／Google Sheets。</p>
+    <button class="btn primary" id="loginBtn">使用 Google 帳號登入</button>
   </div>
 </section>
 
@@ -422,7 +418,7 @@ U41-U50 複習考1 U13
 
 <section id="settings" class="page">
   <div class="card pad">
-    <div class="head"><div class="page-hero"><span class="page-icon rose">⚙</span><div><h2 class="title">統計與設定</h2><div class="small" id="settingsClassText"></div><div class="page-subtitle">班級資料管理與正式版 Google 雲端規劃</div></div></div><button class="btn" data-page="dash">← 回主介面</button></div>
+    <div class="head"><div class="page-hero"><span class="page-icon rose">⚙</span><div><h2 class="title">統計與設定</h2><div class="small" id="settingsClassText"></div><div class="page-subtitle">班級資料管理與 Google 雲端資料</div></div></div><button class="btn" data-page="dash">← 回主介面</button></div>
     <div class="grid2">
       <div class="card pad subpanel rose">
         <h3 style="margin-top:0">班級資料管理</h3>
@@ -436,11 +432,11 @@ U41-U50 複習考1 U13
         <div id="archivedClassList"></div>
       </div>
       <div class="card pad subpanel blue">
-        <h3 style="margin-top:0">Google 雲端資料（正式版規劃）</h3>
+        <h3 style="margin-top:0">Google 雲端資料</h3>
         <div class="notice">
           每個「班級＋學年度＋學期」會使用獨立 Google 試算表，另有班級索引資料。網站不依賴檔名，而會用 Spreadsheet ID 與班級識別資料定位。
         </div>
-        <p class="small">正式接 Google 後，右上角會顯示「儲存中…／✓ 已儲存／⚠ 尚未儲存」。目前測試版仍使用瀏覽器 localStorage。</p>
+        <p class="small">班級資料與成績會同步至你的 Google Drive／Google Sheets；右上角會顯示「儲存中…／✓ 已儲存／⚠ 儲存失敗」。</p>
       </div>
     </div>
   </div>
@@ -458,7 +454,7 @@ U41-U50 複習考1 U13
   <h3>成績總覽</h3><p>可依科目、自訂最近幾次或自訂日期區間查看。最新考試在左，表格最後一列顯示平均。</p>
   <h3>低於平均</h3><p>只有學生成績低於該次班平均才計一次。可看最近10次、最近2週、自訂次數或自訂日期區間。</p>
   <h3>新學期與封存</h3><p>第一學期可使用「建立下一學期」，複製學生名單但不複製考試與成績。若目前已是第二學期，下一學年度請使用「新增班級」，重新設定班級名稱、學年度與學期。封存不刪資料，之後可重新啟用。</p>
-  <h3>Google 試算表</h3><p>正式版的檔名可自行修改，但不建議任意刪除或重新命名系統工作表。若偵測資料格式異常，系統會停止寫入並提示修復。</p>
+  <h3>Google 試算表</h3><p>Google 試算表的檔名可自行修改，但不建議任意刪除或重新命名系統工作表。若偵測資料格式異常，系統會停止寫入並提示修復。</p>
 </aside>
 
 <div class="modal" id="guideModal">
@@ -1226,23 +1222,6 @@ function closeModal(){$('genericModal').classList.remove('open');}
 
 $('helpBtn').onclick=()=>{$('overlay').classList.add('open');$('helpDrawer').classList.add('open');};
 $('closeHelp').onclick=$('overlay').onclick=()=>{$('overlay').classList.remove('open');$('helpDrawer').classList.remove('open');};
-
-$('demoBtn').onclick=()=>{
-  const choice=prompt('輸入 1 載入測試資料；輸入 2 清除全部測試資料。');
-  if(choice==='2'){localStorage.removeItem('grade_app_v4');location.reload();return;}
-  if(choice!=='1')return;
-  const students=Array.from({length:42},(_,i)=>({seat:String(i+1),name:`學生${String(i+1).padStart(2,'0')}`,account:`115${String(i+1).padStart(3,'0')}`,pass:String(1000+i).slice(-4)}));
-  const dates=['2026-09-01','2026-08-31','2026-08-30','2026-08-28','2026-08-27','2026-08-25','2026-08-22','2026-08-20','2026-08-18','2026-08-15','2026-08-12','2026-08-10'];
-  const subs=['數學','英文','國文','數學','英文','國文','數學','英文','國文','數學','英文','國文'];
-  const exams=dates.map((date,k)=>({
-    date,subject:subs[k],name:`測驗 ${k+1}`,scores:students.map((s,i)=>({seat:s.seat,name:s.name,value:(i+k)%11===0?'':String(Math.max(0,Math.min(100,55+((i*7+k*11)%46))))}))
-  }));
-  app={...app,logged:true,currentClassId:'CLS-DEMO01',classes:[
-    {id:'CLS-DEMO01',name:'高二智班',year:'115',term:'1',archived:false,students,exams},
-    {id:'CLS-DEMO02',name:'高二智班',year:'114',term:'2',archived:true,students:students.slice(0,40),exams:exams.slice(5)}
-  ],page:'dash',lowRange:'n10',lowSort:'seat',lowExpanded:false,ovRange:'n10',ovStudents:[],ovCount:20,examDate:today()};
-  save();show('dash');toast('✓ 已載入測試資料');
-};
 
 load();
 migrateData();
