@@ -299,6 +299,15 @@
     document.head.appendChild(script);
   }
 
+  function loadUiPolish() {
+    if (document.querySelector('script[data-ui-polish]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/ui-polish.js';
+    script.async = false;
+    script.dataset.uiPolish = '1';
+    document.head.appendChild(script);
+  }
+
   window.GoogleAuth = {
     init, signIn, signOut, getAccessToken, getUser, isSignedIn,
     clientId: CLIENT_ID, scopes: SCOPES, localToday, tryAutoRestore
@@ -309,5 +318,6 @@
   installLocalDateFix();
   installLogoutControl();
   loadProductionSafety();
+  loadUiPolish();
   setTimeout(tryAutoRestore, 0);
 })();
