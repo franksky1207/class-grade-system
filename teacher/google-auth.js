@@ -311,7 +311,7 @@
   function loadParentQuerySettings() {
     if (document.querySelector('script[data-parent-query-settings]')) return;
     const script = document.createElement('script');
-    script.src = 'teacher/parent-query-settings.js';
+    script.src = 'teacher/parent-query-settings.js?v=3-registry-sync';
     script.async = false;
     script.dataset.parentQuerySettings = '1';
     document.head.appendChild(script);
