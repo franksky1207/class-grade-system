@@ -181,6 +181,7 @@
       accessToken = saved.accessToken;
       expiresAt = Number(saved.expiresAt);
       currentUser = saved.currentUser;
+      updateGoogleAccountPanel();
       return true;
     } catch (_) {
       clearStoredSession();
@@ -204,6 +205,7 @@
           expiresAt = Date.now() + Math.max(0, expiresIn - 60) * 1000;
           currentUser = await fetchUserInfo(accessToken);
           saveStoredSession();
+          updateGoogleAccountPanel();
           options.onSuccess?.({ user: currentUser, accessToken });
           resolve({ user: currentUser, accessToken });
         } catch (err) {
@@ -225,6 +227,7 @@
     expiresAt = 0;
     currentUser = null;
     clearStoredSession();
+    updateGoogleAccountPanel();
     const err = new Error('Google 登入已逾時，請重新登入後再繼續。');
     err.code = 'GOOGLE_REAUTH_REQUIRED';
     throw err;
@@ -239,7 +242,24 @@
     expiresAt = 0;
     currentUser = null;
     clearStoredSession();
+    updateGoogleAccountPanel();
     if (tokenToRevoke && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(tokenToRevoke, () => {});
+  }
+
+  function updateGoogleAccountPanel() {
+    const el = document.getElementById('googleAccountStatus');
+    if (!el) return;
+    if (!currentUser) {
+      el.innerHTML = '<div class="small">目前未連線 Google 帳號</div>';
+      return;
+    }
+    const name = String(currentUser.name || '').trim();
+    const email = String(currentUser.email || '').trim();
+    el.innerHTML = `${name ? `<div style="font-weight:700">${escapeHtml(name)}</div>` : ''}<div class="small">${escapeHtml(email || 'Google 帳號已連線')}</div><div class="small" style="margin-top:3px">✓ 已連線 Google Drive / Google Sheets</div>`;
+  }
+
+  function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
   function installLogoutControl() {
@@ -251,8 +271,9 @@
     panel.id = 'googleLogoutPanel';
     panel.className = 'card pad';
     panel.style.marginTop = '14px';
-    panel.innerHTML = `<div class="head" style="margin-bottom:0"><div><h3 style="margin:0">Google 帳號</h3><div class="small" style="margin-top:4px">需要切換老師帳號或使用共用裝置時，可在這裡登出。</div></div><button class="btn" id="googleLogoutBtn">登出／切換 Google 帳號</button></div>`;
+    panel.innerHTML = `<div class="head" style="margin-bottom:0"><div><h3 style="margin:0">Google 帳號</h3><div id="googleAccountStatus" style="margin-top:6px"></div></div><button class="btn" id="googleLogoutBtn">登出／切換 Google 帳號</button></div>`;
     settingsCard.appendChild(panel);
+    updateGoogleAccountPanel();
 
     document.getElementById('googleLogoutBtn')?.addEventListener('click', () => {
       signOut();
@@ -268,6 +289,11 @@
         if (typeof updateHeader === 'function') updateHeader();
       } catch (_) { location.reload(); }
     });
+
+    document.addEventListener('click', e => {
+      const b = e.target?.closest?.('button');
+      if (b?.dataset?.page === 'settings') setTimeout(updateGoogleAccountPanel, 0);
+    }, true);
   }
 
   function tryAutoRestore() {
@@ -295,7 +321,7 @@
 
   window.GoogleAuth = {
     init, signIn, signOut, getAccessToken, getUser, isSignedIn,
-    clientId: CLIENT_ID, scopes: SCOPES, localToday, tryAutoRestore
+    clientId: CLIENT_ID, scopes: SCOPES, localToday, tryAutoRestore, updateGoogleAccountPanel
   };
 
   applyProductionUiCleanup();
