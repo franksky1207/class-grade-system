@@ -93,6 +93,7 @@
         return;
       }
 
+      // 使用者已明確放棄這次未儲存輸入；離開後不應持續警告。
       markDraft(false);
       setTimeout(() => {
         const entryStillActive = document.getElementById('entry')?.classList.contains('active');
@@ -100,6 +101,7 @@
       }, 0);
     }, true);
 
+    // 若已離開成績輸入頁，避免舊工作階段留下的草稿旗標一直干擾主介面。
     const entry = document.getElementById('entry');
     if (entry) {
       new MutationObserver(() => {
