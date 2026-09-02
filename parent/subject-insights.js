@@ -189,3 +189,12 @@
   addStyles();
   scheduleDecorate();
 })();
+
+(function loadParentUsageGuide(){
+  if (document.querySelector('script[data-parent-usage-guide]')) return;
+  const script = document.createElement('script');
+  script.src = '/parent/usage-guide.js?v=1';
+  script.async = false;
+  script.dataset.parentUsageGuide = '1';
+  document.head.appendChild(script);
+})();
