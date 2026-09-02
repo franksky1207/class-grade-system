@@ -160,6 +160,15 @@
     document.head.appendChild(script);
   }
 
+  function loadStudentParentPreview() {
+    if (document.querySelector('script[data-student-parent-preview]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/student-parent-preview.js?v=1';
+    script.async = false;
+    script.dataset.studentParentPreview = '1';
+    document.head.appendChild(script);
+  }
+
   document.addEventListener('click', event => {
     if (event.target?.closest?.('button[data-page="settings"]')) setTimeout(ensurePanel, 0);
   }, true);
@@ -172,4 +181,5 @@
   loadEntrySessionReset();
   loadStudentSessionReset();
   loadRecordCopyTable();
+  loadStudentParentPreview();
 })();
