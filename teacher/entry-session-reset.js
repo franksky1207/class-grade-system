@@ -1,7 +1,29 @@
 // Reset transient grade-entry UI whenever the teacher starts a new entry session.
 (function () {
+  function localToday() {
+    if (window.GoogleAuth?.localToday) return window.GoogleAuth.localToday();
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
   function resetEntrySession() {
     try { parsedExcel = []; } catch (_) {}
+
+    const today = localToday();
+    try {
+      if (typeof app !== 'undefined') {
+        app.examDate = today;
+        if (typeof save === 'function') save();
+      }
+    } catch (_) {}
+
+    const manualDate = document.getElementById('manualDate');
+    const excelDate = document.getElementById('excelDate');
+    if (manualDate) manualDate.value = today;
+    if (excelDate) excelDate.value = today;
 
     const paste = document.getElementById('excelPaste');
     const preview = document.getElementById('excelPreview');
