@@ -11,6 +11,7 @@
   let draftDirty = false;
   let pendingSnapshot = null;
   let syncAttemptActive = false;
+  let googleSavingObserved = false;
   let editingExamRef = null;
 
   function localYmd(d = new Date()) {
@@ -238,6 +239,7 @@
       return;
     }
     syncAttemptActive = true;
+    googleSavingObserved = true;
     const btn=document.getElementById('googleRetryPanel');
     if(btn){btn.disabled=true;btn.textContent='重新儲存中…';}
     const status=document.getElementById('saveStatus'); if(status) status.textContent='儲存中…';
@@ -249,12 +251,13 @@
       await loadScript('teacher/google-exam-sync.js',()=>!!window.GoogleExamSync);
       await window.GoogleStudentSync.syncStudents(c);
       await window.GoogleExamSync.syncExamsAndGrades(c);
-      clearPending(); syncAttemptActive = false;
+      clearPending(); syncAttemptActive = false; googleSavingObserved = false;
       if (typeof save==='function') save();
       if(status) status.textContent='✓ 已儲存';
       if(typeof toast==='function') toast('✓ 已重新同步到 Google');
     } catch (err) {
       syncAttemptActive = false;
+      googleSavingObserved = false;
       if(status) status.textContent='⚠ 儲存失敗';
       ensureRetryPanel();
       alert(err?.message || '重新儲存失敗，請稍後再試。');
@@ -269,6 +272,7 @@
       const b=e.target?.closest?.('button');
       if(!b || !mutatingIds.has(b.id)) return;
       syncAttemptActive = true;
+      googleSavingObserved = false;
       setTimeout(()=>{ const c=typeof currentClass==='function'?currentClass():null; if(c) savePending(c); },0);
     },true);
 
@@ -276,8 +280,17 @@
     if(status){
       new MutationObserver(()=>{
         const t=status.textContent||'';
-        if(t.includes('儲存失敗')) { syncAttemptActive=false; ensureRetryPanel(); }
-        else if(t.includes('✓ 已儲存') && syncAttemptActive) { syncAttemptActive=false; clearPending(); }
+        if(t.includes('儲存中') && syncAttemptActive) {
+          googleSavingObserved = true;
+        } else if(t.includes('儲存失敗')) {
+          syncAttemptActive=false;
+          googleSavingObserved=false;
+          ensureRetryPanel();
+        } else if(t.includes('✓ 已儲存') && syncAttemptActive && googleSavingObserved) {
+          syncAttemptActive=false;
+          googleSavingObserved=false;
+          clearPending();
+        }
       }).observe(status,{childList:true,characterData:true,subtree:true});
     }
     if(loadPending()) ensureRetryPanel();
