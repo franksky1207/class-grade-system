@@ -124,10 +124,19 @@
     document.head.appendChild(script);
   }
 
+  function loadManualExamContentFields() {
+    if (document.querySelector('script[data-manual-exam-content-fields]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/manual-exam-content-fields.js?v=1';
+    script.async = false;
+    script.dataset.manualExamContentFields = '1';
+    document.head.appendChild(script);
+  }
+
   function loadEntrySessionReset() {
     if (document.querySelector('script[data-entry-session-reset]')) return;
     const script = document.createElement('script');
-    script.src = 'teacher/entry-session-reset.js?v=1';
+    script.src = 'teacher/entry-session-reset.js?v=2';
     script.async = false;
     script.dataset.entrySessionReset = '1';
     document.head.appendChild(script);
@@ -150,6 +159,7 @@
   handleCallbackResult();
   loadParentSubjectOrder();
   loadParentSubjectTouchDrag();
+  loadManualExamContentFields();
   loadEntrySessionReset();
   loadRecordCopyTable();
 })();
