@@ -152,7 +152,7 @@ input::placeholder{color:#9ca3af}
         <button class="nav-btn" data-page="records"><span class="icon">▤</span><span>成績紀錄</span></button>
         <button class="nav-btn" data-page="subjects"><span class="icon">▥</span><span>分科表現</span></button>
       </nav>
-      <button id="logoutBtn" class="logout-btn" type="button">重新登入</button>
+      <button id="logoutBtn" class="logout-btn" type="button">登出</button>
     </div>
   </header>
 
@@ -257,7 +257,6 @@ input::placeholder{color:#9ca3af}
   function escapeHtml(v){
     return text(v).replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   }
-
   function recentDates(records){
     const seen=new Set(), dates=[];
     for(const r of records){
