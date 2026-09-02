@@ -65,10 +65,15 @@
 
   function installDraftGuard() {
     try { draftDirty = sessionStorage.getItem(DRAFT_KEY) === '1'; } catch (_) {}
-    document.addEventListener('input', (e) => { if (e.target?.closest?.('#entry')) markDraft(true); }, true);
+
+    document.addEventListener('input', (e) => {
+      if (e.target?.closest?.('#entry')) markDraft(true);
+    }, true);
+
     document.addEventListener('click', (e) => {
       const b = e.target?.closest?.('button');
       if (!b) return;
+
       if (b.id === 'saveManualExam' || b.id === 'saveExcelExams') {
         setTimeout(() => {
           const entryStillActive = document.getElementById('entry')?.classList.contains('active');
@@ -76,14 +81,38 @@
         }, 50);
         return;
       }
+
       const navigating = !!b.dataset?.page || ['backFromEntry','backFromOverview','backFromRecords','backFromStudents','backFromSettings'].includes(b.id);
-      if (navigating && draftDirty && !confirm('目前有尚未儲存的成績輸入，確定要離開嗎？')) {
-        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      if (!navigating || !draftDirty) return;
+
+      const confirmed = confirm('目前有尚未儲存的成績輸入，確定要離開嗎？');
+      if (!confirmed) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return;
       }
+
+      // 使用者已明確放棄這次未儲存輸入；離開後不應持續警告。
+      markDraft(false);
+      setTimeout(() => {
+        const entryStillActive = document.getElementById('entry')?.classList.contains('active');
+        if (!entryStillActive) markDraft(false);
+      }, 0);
     }, true);
+
+    // 若已離開成績輸入頁，避免舊工作階段留下的草稿旗標一直干擾主介面。
+    const entry = document.getElementById('entry');
+    if (entry) {
+      new MutationObserver(() => {
+        if (!entry.classList.contains('active') && draftDirty) markDraft(false);
+      }).observe(entry, { attributes:true, attributeFilter:['class'] });
+    }
+
     window.addEventListener('beforeunload', (e) => {
       if (!hasUnsaved()) return;
-      e.preventDefault(); e.returnValue = '';
+      e.preventDefault();
+      e.returnValue = '';
     });
   }
 
