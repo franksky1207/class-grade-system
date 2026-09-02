@@ -21,6 +21,7 @@
     return `${y}-${m}-${day}`;
   }
 
+  function truthy(v) { return /^(true|1|yes)$/i.test(String(v ?? '').trim()); }
   function deepClone(v) { try { return JSON.parse(JSON.stringify(v)); } catch (_) { return null; } }
 
   function savePending(c) {
@@ -271,9 +272,21 @@
     document.addEventListener('click', e => {
       const b=e.target?.closest?.('button');
       if(!b || !mutatingIds.has(b.id)) return;
-      syncAttemptActive = true;
-      googleSavingObserved = false;
-      setTimeout(()=>{ const c=typeof currentClass==='function'?currentClass():null; if(c) savePending(c); },0);
+      const c = typeof currentClass==='function' ? currentClass() : null;
+      if (!c) return;
+      const before = JSON.stringify(c);
+
+      // 等原本按鈕邏輯跑完；只有班級資料真的改變，才建立待同步快照。
+      setTimeout(()=>{
+        const current = typeof currentClass==='function' ? currentClass() : null;
+        if (!current || current.id !== c.id) return;
+        const after = JSON.stringify(current);
+        if (after === before) return;
+        syncAttemptActive = true;
+        const statusText = document.getElementById('saveStatus')?.textContent || '';
+        googleSavingObserved = statusText.includes('儲存中');
+        savePending(current);
+      },0);
     },true);
 
     const status=document.getElementById('saveStatus');
@@ -283,9 +296,9 @@
         if(t.includes('儲存中') && syncAttemptActive) {
           googleSavingObserved = true;
         } else if(t.includes('儲存失敗')) {
+          if (syncAttemptActive || loadPending()) ensureRetryPanel();
           syncAttemptActive=false;
           googleSavingObserved=false;
-          ensureRetryPanel();
         } else if(t.includes('✓ 已儲存') && syncAttemptActive && googleSavingObserved) {
           syncAttemptActive=false;
           googleSavingObserved=false;
@@ -300,7 +313,7 @@
     const token = await window.GoogleAuth.getAccessToken();
     const rows = await store.readIndexRows(indexId);
     for (const row of rows) {
-      const archived = /^(true|1|yes)$/i.test(String(row?.[4]||'').trim());
+      const archived = truthy(row?.[4]);
       if (archived) continue;
       const spreadsheetId = String(row?.[3]||'').trim();
       if (!spreadsheetId) continue;
@@ -335,12 +348,78 @@
     }
   }
 
+  function archivedStubFromRow(row) {
+    const spreadsheetId = String(row?.[3] || '').trim();
+    return {
+      id:`G-${spreadsheetId.slice(-18)}`,
+      name:String(row?.[0] || '').trim(),
+      year:String(row?.[1] || '').trim(),
+      term:String(row?.[2] || '').trim(),
+      archived:true,
+      spreadsheetId,
+      students:[],
+      exams:[],
+      _googleLazyArchived:true,
+      _googleIndexRow:Array.isArray(row) ? row.slice() : []
+    };
+  }
+
+  async function loadClassesWithArchivedLazy(store, indexId) {
+    const rows = await store.readIndexRows(indexId);
+    const usable = rows.filter(r => String(r?.[0]||'').trim() || String(r?.[1]||'').trim() || String(r?.[2]||'').trim() || String(r?.[3]||'').trim());
+    const classes = [];
+    for (const row of usable) {
+      if (truthy(row?.[4])) classes.push(archivedStubFromRow(row));
+      else classes.push(await store.readClassSpreadsheet(row));
+    }
+    return { classes, indexRows:usable };
+  }
+
+  function installArchivedLazyLoader() {
+    document.addEventListener('click', (event) => {
+      const btn = event.target?.closest?.('button');
+      if (!btn) return;
+      const id = btn.dataset?.viewArch || btn.dataset?.reactivate;
+      if (!id || typeof app === 'undefined') return;
+      const c = app.classes?.find(x=>x.id===id);
+      if (!c?._googleLazyArchived) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      const oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '正在載入…';
+
+      (async()=>{
+        try {
+          const store = window.GoogleDriveStore;
+          if (!store?.readClassSpreadsheet) throw new Error('Google Drive 資料模組尚未載入。');
+          const full = await store.readClassSpreadsheet(c._googleIndexRow);
+          const at = app.classes.findIndex(x=>x.id===id);
+          if (at >= 0) app.classes[at] = full;
+          if (typeof save === 'function') save();
+          btn.disabled = false;
+          btn.textContent = oldText;
+          btn.click();
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = oldText;
+          alert(err?.message || '封存班級資料載入失敗，請稍後再試。');
+        }
+      })();
+    }, true);
+  }
+
   function installDriveStorePreflight() {
     let existing = window.GoogleDriveStore;
     function wrap(store){
       if(!store || store.__productionSafetyWrapped) return store;
       const original=store.loadAllClassesFromGoogle;
-      if(typeof original==='function') store.loadAllClassesFromGoogle=async function(indexId){ await preflightClassSheets(store,indexId); return original.call(store,indexId); };
+      if(typeof original==='function') store.loadAllClassesFromGoogle=async function(indexId){
+        await preflightClassSheets(store,indexId);
+        return loadClassesWithArchivedLazy(store,indexId);
+      };
       store.__productionSafetyWrapped=true;
       return store;
     }
@@ -353,6 +432,7 @@
   installDraftGuard();
   installDuplicateManualExamGuard();
   installPendingSyncGuard();
+  installArchivedLazyLoader();
   installDriveStorePreflight();
   setTimeout(installLocalDateRangeFix,0);
 })();
