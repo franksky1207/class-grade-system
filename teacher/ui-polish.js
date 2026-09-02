@@ -17,6 +17,16 @@
       #overviewTable .sticky-table td:nth-child(n+3){min-width:118px;text-align:center}
       .overview-swipe-hint{display:flex;align-items:center;justify-content:center;gap:7px;margin:8px 0 10px;padding:8px 10px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:13px;font-weight:700}
       .overview-swipe-hint .arrow{font-size:18px;line-height:1}
+      #genericModal.exam-view-compact .tablewrap{overflow-x:hidden}
+      #genericModal.exam-view-compact table{min-width:0;width:100%;table-layout:fixed}
+      #genericModal.exam-view-compact th,
+      #genericModal.exam-view-compact td{padding-left:10px;padding-right:10px}
+      #genericModal.exam-view-compact th:nth-child(1),
+      #genericModal.exam-view-compact td:nth-child(1){width:20%;text-align:left}
+      #genericModal.exam-view-compact th:nth-child(2),
+      #genericModal.exam-view-compact td:nth-child(2){width:52%;text-align:left;overflow:hidden;text-overflow:ellipsis}
+      #genericModal.exam-view-compact th:nth-child(3),
+      #genericModal.exam-view-compact td:nth-child(3){width:28%;text-align:center}
       @media(max-width:767px){
         .header-inner{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;gap:8px;padding:10px 12px}
         .header-inner>div:first-child{min-width:0}
@@ -40,6 +50,15 @@
         #overviewTable .sticky-table th:nth-child(n+3),
         #overviewTable .sticky-table td:nth-child(n+3){min-width:102px;padding-left:8px;padding-right:8px}
         #overviewTable .sticky-table th:nth-child(n+3){white-space:normal;line-height:1.35}
+        #genericModal.exam-view-compact .modal-card{width:min(520px,96vw);padding:16px}
+        #genericModal.exam-view-compact th,
+        #genericModal.exam-view-compact td{padding:8px 9px}
+        #genericModal.exam-view-compact th:nth-child(1),
+        #genericModal.exam-view-compact td:nth-child(1){width:18%}
+        #genericModal.exam-view-compact th:nth-child(2),
+        #genericModal.exam-view-compact td:nth-child(2){width:54%}
+        #genericModal.exam-view-compact th:nth-child(3),
+        #genericModal.exam-view-compact td:nth-child(3){width:28%}
       }
     `;
     document.head.appendChild(style);
@@ -137,9 +156,29 @@
     }, true);
   }
 
+  function syncExamViewCompactClass() {
+    const modal = document.getElementById('genericModal');
+    if (!modal) return;
+    modal.classList.remove('exam-view-compact');
+    if (!modal.classList.contains('open')) return;
+    if (modal.querySelector('input,select,textarea')) return;
+    const heads = [...modal.querySelectorAll('thead th')].map(th => th.textContent.trim());
+    if (heads.length === 3 && heads[0] === '座號' && heads[1] === '姓名' && heads[2] === '成績') {
+      modal.classList.add('exam-view-compact');
+    }
+  }
+
+  function installExamViewCompactLayout() {
+    const modal = document.getElementById('genericModal');
+    if (!modal || modal.__examCompactObserved) return;
+    modal.__examCompactObserved = true;
+    new MutationObserver(syncExamViewCompactClass).observe(modal, { attributes:true, attributeFilter:['class'], childList:true, subtree:true });
+  }
+
   injectStyles();
   enhanceBackButtons();
   renderLastSync();
   installSyncTimestampObserver();
   installOverviewSwipeHint();
+  installExamViewCompactLayout();
 })();
