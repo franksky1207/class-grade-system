@@ -59,14 +59,14 @@
 
         if (oldHelp) oldHelp.style.display = 'none';
         const style = doc.createElement('style');
-        style.textContent = '.analysis-help{margin:14px 0 0;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;padding:10px 12px;color:#475569;font-size:13px;line-height:1.72}.analysis-help summary{cursor:pointer;font-weight:900;color:#1d4ed8}.analysis-help-body{margin-top:9px;padding-top:9px;border-top:1px solid #dbeafe}.analysis-help-body p{margin:6px 0}.analysis-help-body ul{margin:6px 0 6px 18px;padding:0}.analysis-help-body li{margin:4px 0}.analysis-help-note{margin-top:8px;background:#fff;border:1px solid #e5e7eb;border-radius:9px;padding:8px 9px}';
+        style.textContent = '.analysis-help{margin:14px 0 0;border:1px solid #bfdbfe;background:#fff;border-radius:14px;overflow:hidden;color:#475569;font-size:13px;line-height:1.72;box-shadow:0 4px 14px rgba(37,99,235,.06)}.analysis-help summary{cursor:pointer;list-style:none;padding:12px 13px;display:flex;align-items:center;gap:11px}.analysis-help summary::-webkit-details-marker{display:none}.analysis-help-icon{flex:0 0 34px;width:34px;height:34px;border-radius:10px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:18px;font-weight:900}.analysis-help-copy{min-width:0;flex:1}.analysis-help-title{font-size:14px;font-weight:900;color:#1e3a8a;line-height:1.35}.analysis-help-sub{font-size:12px;color:#64748b;margin-top:2px;line-height:1.45}.analysis-help-action{flex:0 0 auto;color:#2563eb;font-size:12px;font-weight:900;white-space:nowrap;border:1px solid #bfdbfe;background:#eff6ff;border-radius:999px;padding:5px 9px}.analysis-help[open] .analysis-help-action{background:#2563eb;color:#fff;border-color:#2563eb}.analysis-help-body{padding:11px 13px 12px;border-top:1px solid #dbeafe;background:#f8fbff}.analysis-help-body p{margin:6px 0}.analysis-help-body ul{margin:6px 0 6px 18px;padding:0}.analysis-help-body li{margin:4px 0}.analysis-help-note{margin-top:8px;background:#fff;border:1px solid #e5e7eb;border-radius:9px;padding:8px 9px}@media(max-width:560px){.analysis-help summary{align-items:flex-start}.analysis-help-action{margin-top:3px}.analysis-help-sub{max-width:205px}}';
         doc.head.appendChild(style);
 
         const details = doc.createElement('details');
         details.id = 'classAnalysisHelpDetails';
         details.className = 'analysis-help';
         details.innerHTML = `
-          <summary>依位置與近期變化篩選學生，查看符合條件學生的班級百分位趨勢。　判定說明</summary>
+          <summary><span class="analysis-help-icon">ⓘ</span><span class="analysis-help-copy"><span class="analysis-help-title">高位、上升、波動怎麼判定？</span><span class="analysis-help-sub">查看位置、變化型態、聚焦學生與節點的完整規則</span></span><span class="analysis-help-action">查看判定說明 ▾</span></summary>
           <div class="analysis-help-body">
             <p><b>位置與變化型態是兩個獨立條件。</b>兩邊都可以選「全部」，所以可以只看「高位」、只看「下降」，也可以交叉篩選例如「高位＋穩定」或「低位＋上升」。</p>
             <p><b>位置分類：</b>依目前所選科目與分析範圍內，各學生的平均班級百分位判定：</p>
@@ -77,6 +77,10 @@
             <p><b>分析範圍：</b>可選近5次、近10次、近15次、自訂最近 N 次或全部。若學生該科有效成績不足所選次數，就依現有資料計算。空白不計，0 分有效。</p>
             <div class="analysis-help-note"><b>資料處理：</b>所有分類、百分位與圖表都只在瀏覽器即時計算，不新增欄位、不修改原始成績，也不會寫回 Google 試算表。</div>
           </div>`;
+        details.addEventListener('toggle', () => {
+          const action = details.querySelector('.analysis-help-action');
+          if (action) action.textContent = details.open ? '收合判定說明 ▴' : '查看判定說明 ▾';
+        });
         panel.insertAdjacentElement('afterend', details);
         clearInterval(timer);
       } catch (_) {
