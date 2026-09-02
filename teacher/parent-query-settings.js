@@ -10,6 +10,7 @@
     updatedAt: '更新時間'
   };
   const QUERY_BASE_URL = 'https://class-grade-system.vercel.app/p/';
+  const REGISTRY_URL = 'https://sphrceazgfrjtgeeikfp.supabase.co/functions/v1/parent-query-register';
 
   let initializing = null;
   let cached = null;
@@ -40,6 +41,32 @@
 
   function queryUrl(code) {
     return `${QUERY_BASE_URL}${encodeURIComponent(text(code).toLowerCase())}`;
+  }
+
+  async function syncRegistry(settings) {
+    const token = await window.GoogleAuth.getAccessToken();
+    const response = await fetch(REGISTRY_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        queryCode: text(settings?.queryCode).toLowerCase(),
+        publicSpreadsheetId: text(settings?.publicSpreadsheetId)
+      })
+    });
+
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok) {
+      if (response.status === 409 && data?.error === 'query_code_taken') {
+        throw new Error('這個查詢網址代碼已有人使用，請換一個。');
+      }
+      if (response.status === 401) throw new Error('Google 登入已逾時，請重新登入後再試。');
+      throw new Error('中央查詢設定同步失敗，請稍後再試。');
+    }
+    return data;
   }
 
   async function getSheetProperties(indexId) {
@@ -151,6 +178,7 @@
     }
 
     next.updatedAt = new Date().toISOString();
+    await syncRegistry(next);
     cached = await writeSettings(id, next);
     window.parentQuerySettings = { ...cached };
     return { ...cached };
@@ -352,6 +380,8 @@
       if (window.classGradeSystemIndex?.id && window.GoogleAuth?.isSignedIn()) {
         try {
           await ensure(window.classGradeSystemIndex.id);
+          try { await syncRegistry(cached); }
+          catch (registryErr) { console.error('中央家長查詢登記失敗：', registryErr); }
           renderPanel(cached);
         } catch (err) {
           console.error('家長查詢設定初始化失敗：', err);
@@ -380,6 +410,7 @@
     read,
     update,
     refreshPanel,
+    syncRegistry,
     queryUrl,
     sheetName: SHEET_NAME
   };
