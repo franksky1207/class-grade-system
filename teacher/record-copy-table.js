@@ -54,6 +54,12 @@
     if (count) count.textContent = selected.size ? `已選擇 ${selected.size} 場考試` : '尚未選擇考試';
   }
 
+  function resetSelection() {
+    selected.clear();
+    document.querySelectorAll('input[data-copy-exam]').forEach(input => { input.checked = false; });
+    updateTools();
+  }
+
   function decorateRows() {
     ensureTools();
     const list = document.getElementById('recordList');
@@ -139,7 +145,10 @@
   }
 
   document.addEventListener('click', event => {
-    if (event.target?.closest?.('button[data-page="records"]')) setTimeout(install, 0);
+    if (event.target?.closest?.('button[data-page="records"]')) {
+      resetSelection();
+      setTimeout(install, 0);
+    }
   }, true);
 
   const started = Date.now();
@@ -149,5 +158,5 @@
   };
   wait();
 
-  window.RecordCopyTable = { open: openCopyTable };
+  window.RecordCopyTable = { open: openCopyTable, reset: resetSelection };
 })();
