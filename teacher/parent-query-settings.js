@@ -9,9 +9,11 @@
     createdAt: '建立時間',
     updatedAt: '更新時間'
   };
+  const QUERY_BASE_URL = 'https://class-grade-system.vercel.app/p/';
 
   let initializing = null;
   let cached = null;
+  let panelLoading = false;
 
   async function authFetch(url, options = {}) {
     const token = await window.GoogleAuth.getAccessToken();
@@ -34,6 +36,10 @@
     const bytes = new Uint8Array(8);
     crypto.getRandomValues(bytes);
     return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
+  }
+
+  function queryUrl(code) {
+    return `${QUERY_BASE_URL}${encodeURIComponent(text(code).toLowerCase())}`;
   }
 
   async function getSheetProperties(indexId) {
@@ -150,12 +156,206 @@
     return { ...cached };
   }
 
+  function getClasses() {
+    try {
+      if (typeof app === 'undefined' || !Array.isArray(app.classes)) return [];
+      return app.classes.filter(c => text(c?.spreadsheetId));
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function classLabel(c) {
+    const term = text(c?.term) === '1' ? '第1學期' : text(c?.term) === '2' ? '第2學期' : `第${text(c?.term)}學期`;
+    return `${text(c?.name)}｜${text(c?.year)}學年度 ${term}${c?.archived ? '（已封存）' : ''}`;
+  }
+
+  function publicClassLabel(spreadsheetId) {
+    if (!spreadsheetId) return '尚未公開任何班級';
+    const hit = getClasses().find(c => text(c.spreadsheetId) === text(spreadsheetId));
+    return hit ? classLabel(hit) : '目前公開班級資料尚未載入';
+  }
+
+  function setPanelStatus(message, tone = '') {
+    const el = document.getElementById('parentQueryPanelStatus');
+    if (!el) return;
+    el.textContent = message || '';
+    el.style.color = tone === 'error' ? '#b91c1c' : tone === 'success' ? '#047857' : '#6b7280';
+  }
+
+  async function copyText(value) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+    const input = document.createElement('textarea');
+    input.value = value;
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    const ok = document.execCommand('copy');
+    input.remove();
+    if (!ok) throw new Error('瀏覽器不允許自動複製。');
+  }
+
+  function ensurePanel() {
+    const settingsPage = document.getElementById('settings');
+    if (!settingsPage) return null;
+    let panel = document.getElementById('parentQuerySettingsPanel');
+    if (panel) return panel;
+
+    const host = settingsPage.querySelector(':scope > .card.pad') || settingsPage;
+    panel = document.createElement('div');
+    panel.id = 'parentQuerySettingsPanel';
+    panel.className = 'card pad';
+    panel.style.marginTop = '14px';
+    panel.innerHTML = `
+      <div class="head">
+        <div>
+          <h3 style="margin:0">家長查詢設定</h3>
+          <div class="small" style="margin-top:4px">教師端目前使用的班級與家長目前公開的班級互不連動。</div>
+        </div>
+      </div>
+
+      <div class="subpanel rose" style="margin-bottom:12px">
+        <div class="small" style="margin-bottom:5px">目前家長查詢網址</div>
+        <div id="parentQueryUrlText" style="font-weight:800;word-break:break-all">載入中……</div>
+        <div class="actions" style="margin-top:10px">
+          <button class="btn" id="parentQueryCopyBtn" type="button">複製網址</button>
+        </div>
+        <div class="small" style="margin-top:8px">家長查詢網站完成後，此網址才會正式開放登入。</div>
+      </div>
+
+      <div class="subpanel" style="margin-bottom:12px">
+        <div class="small">目前公開班級</div>
+        <div id="parentQueryPublicClassText" style="font-weight:800;margin-top:4px">載入中……</div>
+        <label style="display:block;margin-top:12px">更改公開班級
+          <select class="field" id="parentQueryClassSelect">
+            <option value="">不公開任何班級</option>
+          </select>
+        </label>
+        <button class="btn primary" id="parentQuerySaveClassBtn" type="button" style="margin-top:10px">儲存公開設定</button>
+      </div>
+
+      <div class="subpanel">
+        <label>查詢網址代碼
+          <input class="field" id="parentQueryCodeInput" type="text" maxlength="32" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="small" style="margin-top:6px">4～32 位英文、數字或連字號。修改後舊網址代碼將不再使用。</div>
+        <button class="btn" id="parentQuerySaveCodeBtn" type="button" style="margin-top:10px">修改網址代碼</button>
+      </div>
+
+      <div id="parentQueryPanelStatus" class="small" style="margin-top:10px"></div>
+    `;
+    host.appendChild(panel);
+
+    panel.querySelector('#parentQueryCopyBtn')?.addEventListener('click', async () => {
+      const code = text(document.getElementById('parentQueryCodeInput')?.value || cached?.queryCode);
+      if (!code) return;
+      try {
+        await copyText(queryUrl(code));
+        setPanelStatus('查詢網址已複製。', 'success');
+      } catch (err) {
+        setPanelStatus(err?.message || '無法複製網址。', 'error');
+      }
+    });
+
+    panel.querySelector('#parentQuerySaveClassBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('parentQuerySaveClassBtn');
+      const select = document.getElementById('parentQueryClassSelect');
+      if (!btn || !select) return;
+      btn.disabled = true;
+      setPanelStatus('正在儲存公開班級……');
+      try {
+        const saved = await update({ publicSpreadsheetId: select.value });
+        renderPanel(saved);
+        setPanelStatus('公開班級已儲存。', 'success');
+      } catch (err) {
+        setPanelStatus(err?.message || '公開班級儲存失敗。', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    panel.querySelector('#parentQuerySaveCodeBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('parentQuerySaveCodeBtn');
+      const input = document.getElementById('parentQueryCodeInput');
+      if (!btn || !input) return;
+      btn.disabled = true;
+      setPanelStatus('正在修改網址代碼……');
+      try {
+        const saved = await update({ queryCode: input.value });
+        renderPanel(saved);
+        setPanelStatus('網址代碼已修改。', 'success');
+      } catch (err) {
+        setPanelStatus(err?.message || '網址代碼修改失敗。', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    return panel;
+  }
+
+  function renderPanel(settings = cached) {
+    if (!settings) return;
+    ensurePanel();
+    const urlEl = document.getElementById('parentQueryUrlText');
+    const codeInput = document.getElementById('parentQueryCodeInput');
+    const classText = document.getElementById('parentQueryPublicClassText');
+    const select = document.getElementById('parentQueryClassSelect');
+
+    if (urlEl) urlEl.textContent = queryUrl(settings.queryCode);
+    if (codeInput && document.activeElement !== codeInput) codeInput.value = settings.queryCode || '';
+    if (classText) classText.textContent = publicClassLabel(settings.publicSpreadsheetId);
+
+    if (select) {
+      const previous = settings.publicSpreadsheetId || '';
+      select.innerHTML = '<option value="">不公開任何班級</option>';
+      getClasses().forEach(c => {
+        const option = document.createElement('option');
+        option.value = text(c.spreadsheetId);
+        option.textContent = classLabel(c);
+        select.appendChild(option);
+      });
+      select.value = previous;
+      if (previous && select.value !== previous) {
+        const option = document.createElement('option');
+        option.value = previous;
+        option.textContent = '目前公開班級（資料尚未載入）';
+        select.appendChild(option);
+        select.value = previous;
+      }
+    }
+  }
+
+  async function refreshPanel() {
+    if (panelLoading || !window.GoogleAuth?.isSignedIn() || !window.classGradeSystemIndex?.id) return;
+    panelLoading = true;
+    ensurePanel();
+    setPanelStatus('正在載入家長查詢設定……');
+    try {
+      const settings = await read();
+      renderPanel(settings);
+      setPanelStatus('');
+    } catch (err) {
+      setPanelStatus(err?.message || '家長查詢設定載入失敗。', 'error');
+    } finally {
+      panelLoading = false;
+    }
+  }
+
   function waitForIndexAfterLogin() {
     const started = Date.now();
     const check = async () => {
       if (window.classGradeSystemIndex?.id && window.GoogleAuth?.isSignedIn()) {
-        try { await ensure(window.classGradeSystemIndex.id); }
-        catch (err) { console.error('家長查詢設定初始化失敗：', err); }
+        try {
+          await ensure(window.classGradeSystemIndex.id);
+          renderPanel(cached);
+        } catch (err) {
+          console.error('家長查詢設定初始化失敗：', err);
+        }
         return;
       }
       if (Date.now() - started < 30000) setTimeout(check, 100);
@@ -164,11 +364,23 @@
   }
 
   document.addEventListener('click', event => {
-    const btn = event.target?.closest?.('#loginBtn');
-    if (btn) setTimeout(waitForIndexAfterLogin, 0);
+    const loginBtn = event.target?.closest?.('#loginBtn');
+    if (loginBtn) {
+      setTimeout(waitForIndexAfterLogin, 0);
+      return;
+    }
+    const settingsBtn = event.target?.closest?.('button[data-page="settings"]');
+    if (settingsBtn) setTimeout(refreshPanel, 0);
   }, true);
 
   if (window.classGradeSystemIndex?.id && window.GoogleAuth?.isSignedIn()) waitForIndexAfterLogin();
 
-  window.ParentQuerySettings = { ensure, read, update, sheetName: SHEET_NAME };
+  window.ParentQuerySettings = {
+    ensure,
+    read,
+    update,
+    refreshPanel,
+    queryUrl,
+    sheetName: SHEET_NAME
+  };
 })();
