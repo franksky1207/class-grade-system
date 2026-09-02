@@ -169,6 +169,15 @@
     document.head.appendChild(script);
   }
 
+  function loadStudentTrendAnalysis() {
+    if (document.querySelector('script[data-student-trend-analysis]')) return;
+    const script = document.createElement('script');
+    script.src = 'teacher/student-trend-analysis.js?v=1';
+    script.async = false;
+    script.dataset.studentTrendAnalysis = '1';
+    document.head.appendChild(script);
+  }
+
   document.addEventListener('click', event => {
     if (event.target?.closest?.('button[data-page="settings"]')) setTimeout(ensurePanel, 0);
   }, true);
@@ -182,4 +191,5 @@
   loadStudentSessionReset();
   loadRecordCopyTable();
   loadStudentParentPreview();
+  loadStudentTrendAnalysis();
 })();
