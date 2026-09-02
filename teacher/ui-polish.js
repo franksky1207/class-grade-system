@@ -9,6 +9,13 @@
     if (touch && screenWidth <= 600) document.documentElement.classList.add('phone-device');
   }
 
+  function localYmd(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
   function injectStyles() {
     if (document.getElementById('teacherUiPolishStyles')) return;
     const style = document.createElement('style');
@@ -264,6 +271,68 @@
       .observe(document.getElementById('genericModalCard') || modal, { childList:true, subtree:true });
   }
 
+  function installEditValidationGuards() {
+    document.addEventListener('click', event => {
+      const btn = event.target?.closest?.('button');
+      if (!btn) return;
+
+      if (btn.id === 'saveExamEdit') {
+        const date = document.getElementById('editDate')?.value || '';
+        const subject = document.getElementById('editSubject')?.value?.trim() || '';
+        const name = document.getElementById('editName')?.value?.trim() || '';
+        if (date && subject && name) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        alert('請填寫日期、科目與考試名稱。');
+        return;
+      }
+
+      if (btn.id === 'saveStuEdit') {
+        const name = document.getElementById('esName')?.value?.trim() || '';
+        if (name) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        alert('學生姓名不可空白。');
+      }
+    }, true);
+  }
+
+  function installLocalOverviewDateGuard() {
+    if (typeof window.drawOverview !== 'function' || window.drawOverview.__localDateGuarded) return;
+    const original = window.drawOverview;
+    const wrapped = function(...args) {
+      const nativeIso = Date.prototype.toISOString;
+      Date.prototype.toISOString = function() { return `${localYmd(this)}T00:00:00.000Z`; };
+      try { return original.apply(this, args); }
+      finally { Date.prototype.toISOString = nativeIso; }
+    };
+    wrapped.__localDateGuarded = true;
+    window.drawOverview = wrapped;
+  }
+
+  function enforceNoActiveClassView() {
+    try {
+      if (typeof app === 'undefined' || !app.logged || !Array.isArray(app.classes) || !app.classes.length) return;
+      const hasActive = app.classes.some(c => !c.archived);
+      const dashActive = document.getElementById('dash')?.classList.contains('active');
+      if (!hasActive && dashActive && typeof show === 'function') {
+        app.currentClassId = null;
+        show('noActiveClass');
+      }
+    } catch (_) {}
+  }
+
+  function installNoActiveClassGuard() {
+    const dash = document.getElementById('dash');
+    if (!dash || dash.__noActiveObserved) return;
+    dash.__noActiveObserved = true;
+    new MutationObserver(() => setTimeout(enforceNoActiveClassView, 0))
+      .observe(dash, { attributes:true, attributeFilter:['class'] });
+    setTimeout(enforceNoActiveClassView, 0);
+  }
+
   detectPhoneLayout();
   injectStyles();
   enhanceBackButtons();
@@ -274,4 +343,7 @@
   installRecordFilterDefaults();
   installMobileSubjectPicker();
   installExamViewCompactLayout();
+  installEditValidationGuards();
+  installLocalOverviewDateGuard();
+  installNoActiveClassGuard();
 })();
