@@ -37,6 +37,9 @@
         ? classScores.reduce((sum, v) => sum + v, 0) / participantCount
         : null;
       const rank = participantCount ? 1 + classScores.filter(v => v > own).length : null;
+      const lower = participantCount ? classScores.filter(v => v < own).length : 0;
+      const equal = participantCount ? classScores.filter(v => v === own).length : 0;
+      const percentile = participantCount ? (lower + 0.5 * equal) / participantCount * 100 : null;
       const comparison = classAverage === null ? 'equal' : own > classAverage ? 'above' : own < classAverage ? 'below' : 'equal';
 
       rows.push({
@@ -47,6 +50,7 @@
         classAverage,
         rank,
         participantCount,
+        percentile,
         comparison,
         _sourceIndex: sourceIndex
       });
