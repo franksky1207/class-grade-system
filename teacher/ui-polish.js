@@ -172,7 +172,8 @@
     const modal = document.getElementById('genericModal');
     if (!modal || modal.__examCompactObserved) return;
     modal.__examCompactObserved = true;
-    new MutationObserver(syncExamViewCompactClass).observe(modal, { attributes:true, attributeFilter:['class'], childList:true, subtree:true });
+    new MutationObserver(() => setTimeout(syncExamViewCompactClass, 0))
+      .observe(document.getElementById('genericModalCard') || modal, { childList:true, subtree:true });
   }
 
   injectStyles();
