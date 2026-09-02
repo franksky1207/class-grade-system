@@ -105,16 +105,22 @@
   async function touchClassUpdatedAt(c) {
     const id = String(c?.spreadsheetId || '').trim();
     if (!id) return { updated:false };
-    const index = await getIndexInfo();
-    const rows = await readIndexRows(index.id);
-    const at = rows.findIndex(r => String(r?.[3] || '').trim() === id);
-    if (at < 0) return { updated:false };
-    const rowNumber = at + 2;
-    const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!G${rowNumber}`);
-    await authFetch(`${SHEETS_API}/${encodeURIComponent(index.id)}/values/${range}?valueInputOption=RAW`, {
-      method:'PUT', body:JSON.stringify({ majorDimension:'ROWS', values:[[new Date().toISOString()]] })
-    });
-    return { updated:true };
+    try {
+      const index = await getIndexInfo();
+      const rows = await readIndexRows(index.id);
+      const at = rows.findIndex(r => String(r?.[3] || '').trim() === id);
+      if (at < 0) return { updated:false };
+      const rowNumber = at + 2;
+      const range = encodeURIComponent(`'${INDEX_SHEET_NAME}'!G${rowNumber}`);
+      await authFetch(`${SHEETS_API}/${encodeURIComponent(index.id)}/values/${range}?valueInputOption=RAW`, {
+        method:'PUT', body:JSON.stringify({ majorDimension:'ROWS', values:[[new Date().toISOString()]] })
+      });
+      return { updated:true };
+    } catch (err) {
+      // 更新時間只是輔助資訊；核心學生／成績已寫入時，不應因這一步失敗而顯示整筆儲存失敗。
+      console.warn('班級更新時間寫入失敗，核心資料不受影響：', err);
+      return { updated:false, warning: err?.message || '更新時間寫入失敗' };
+    }
   }
 
   async function permanentDeleteClass(c) {
