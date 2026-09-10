@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="班級成績管理系統隱私權政策">
+  <title>隱私權政策｜班級成績管理系統</title>
+  <style>
+    :root{--bg:#f4f7fb;--card:#fff;--line:#e3e8ef;--text:#111827;--muted:#64748b;--primary:#2563eb;--soft:#eff6ff;--warn:#fffaf0;--shadow:0 12px 32px rgba(15,23,42,.07)}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#f8fbff,#f4f7fb 45%,#eef2f7);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;line-height:1.78}
+    main{max-width:860px;margin:auto;padding:34px 16px 56px}.top{text-align:center;margin-bottom:20px}.mark{width:54px;height:54px;margin:0 auto 11px;border-radius:17px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:25px;font-weight:900}.top h1{font-size:29px;margin:0}.top p{margin:7px 0 0;color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:22px;margin-top:14px}.card h2{font-size:20px;margin:0 0 9px}.card h3{font-size:16px;margin:18px 0 6px}.card p{margin:8px 0}.card ul{margin:8px 0;padding-left:22px}.notice{background:var(--soft);border-color:#bfdbfe}.warning{background:var(--warn);border-color:#fde68a}.links{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.links a{display:inline-block;text-decoration:none;border:1px solid #bfdbfe;background:#fff;color:#1d4ed8;border-radius:12px;padding:10px 14px;font-weight:800}.links a.primary{background:var(--primary);color:#fff;border-color:var(--primary)}.updated{text-align:center;color:#94a3b8;font-size:12px;margin-top:26px}
+    @media(min-width:768px){main{padding-top:50px}.card{padding:28px}.top h1{font-size:34px}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div class="mark">成</div>
+    <h1>隱私權政策</h1>
+    <p>班級成績管理系統</p>
+  </header>
+
+  <section class="card notice">
+    <h2>政策摘要</h2>
+    <p>班級成績管理系統以教師自己的 Google Drive／Google Sheets 作為主要班級資料儲存位置。系統僅在提供成績管理、分析與家長／學生查詢功能所必要的範圍內存取及處理資料。</p>
+  </section>
+
+  <section class="card">
+    <h2>一、系統會處理哪些資料</h2>
+    <h3>教師端</h3>
+    <ul>
+      <li>教師 Google 帳號登入所需的基本識別資訊。</li>
+      <li>教師授權使用的 Google Drive 與 Google Sheets 資料。</li>
+      <li>由教師建立或匯入的班級、學生、考試與成績資料。</li>
+    </ul>
+    <h3>家長／學生查詢端</h3>
+    <ul>
+      <li>教師設定的查詢網址代碼與目前公開班級識別資訊。</li>
+      <li>登入時輸入的學號與身分證後 4 碼，僅用於比對教師公開班級中的學生資料。</li>
+      <li>登入成功後顯示該名學生自己的成績、班級平均、名次、百分位與相關分析資訊。</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>二、Google 使用者資料如何使用</h2>
+    <p>本系統使用 Google OAuth 取得教師明確授權，以存取 Google Drive 與 Google Sheets。這些權限僅用於本系統的核心功能，包括建立、讀取、更新及管理教師透過本系統使用的班級資料與試算表。</p>
+    <p>本系統不會將 Google 使用者資料用於廣告、行銷、販售資料或建立與本系統功能無關的使用者剖析。</p>
+  </section>
+
+  <section class="card">
+    <h2>三、資料儲存與後端憑證</h2>
+    <p>班級、學生、考試與完整成績資料主要保存在教師自己的 Google Drive／Google Sheets，不集中複製到本網站的中央成績資料庫。</p>
+    <p>為了提供家長／學生離線查詢功能，系統後端會保存必要的 Google OAuth refresh token，以及教師查詢網址代碼、目前公開班級識別資訊與授權狀態等必要設定。OAuth 憑證不會顯示給家長／學生，也不會寫入前端網頁或 GitHub 原始碼。</p>
+  </section>
+
+  <section class="card">
+    <h2>四、資料分享與第三方服務</h2>
+    <p>本系統不販售個人資料，也不主動將學生完整成績提供給與功能無關的第三方。</p>
+    <p>為了提供系統功能，資料可能由必要的基礎服務處理，例如 Google Cloud／Google Drive／Google Sheets、Supabase 與 Vercel。這些服務僅作為登入、資料存取、後端查詢及網站託管等技術用途。</p>
+  </section>
+
+  <section class="card">
+    <h2>五、家長／學生查詢安全</h2>
+    <p>家長／學生端僅能透過教師提供的查詢網址，使用學號與身分證後 4 碼進行驗證。登入成功後只會取得該名學生自己的資料，不會取得教師的 Google 存取權杖。</p>
+    <p>教師可自行指定目前允許家長／學生查詢的班級或學期，也可停止公開。</p>
+  </section>
+
+  <section class="card warning">
+    <h2>六、資料控制與撤回授權</h2>
+    <p>教師可停止使用本系統、停止公開家長查詢班級，或透過 Google 帳戶的授權管理撤回本系統的 Google 存取權限。撤回 Google 授權後，依賴該授權的雲端資料存取或家長／學生查詢功能可能無法繼續運作。</p>
+    <p>如需刪除由本系統建立的 Google Drive／Google Sheets 資料，教師可使用系統既有班級刪除功能，或直接在自己的 Google Drive 中管理相關檔案。</p>
+  </section>
+
+  <section class="card">
+    <h2>七、政策更新與聯絡方式</h2>
+    <p>若系統功能、資料使用方式或第三方服務有重大改變，本頁內容可能配合更新。</p>
+    <p>如對本系統的資料使用或隱私權政策有疑問，可透過 Google OAuth 同意畫面所列的使用者支援電子郵件或開發人員聯絡資訊聯繫。</p>
+  </section>
+
+  <div class="links">
+    <a class="primary" href="/">前往系統</a>
+    <a href="/about/">關於本系統</a>
+  </div>
+
+  <div class="updated">最後更新：2026 年 9 月 10 日</div>
+</main>
+</body>
+</html>
