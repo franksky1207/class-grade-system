@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="班級成績管理系統－協助教師管理班級成績、分析學習表現，並提供家長與學生查詢近期成績。">
+  <title>關於班級成績管理系統</title>
+  <style>
+    :root{--bg:#f4f7fb;--card:#fff;--line:#e3e8ef;--text:#111827;--muted:#64748b;--primary:#2563eb;--soft:#eff6ff;--shadow:0 12px 32px rgba(15,23,42,.07)}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#f8fbff,#f4f7fb 45%,#eef2f7);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;line-height:1.75}
+    main{max-width:820px;margin:auto;padding:36px 16px 56px}.hero{text-align:center;margin-bottom:22px}.mark{width:58px;height:58px;margin:0 auto 12px;border-radius:18px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:27px;font-weight:900}.hero h1{font-size:29px;margin:0}.hero p{margin:7px 0 0;color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:22px;margin-top:14px}.card h2{font-size:20px;margin:0 0 10px}.card p{margin:8px 0}.card ul{margin:8px 0;padding-left:22px}.note{background:var(--soft);border-color:#bfdbfe}.links{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.links a{display:inline-block;text-decoration:none;border:1px solid #bfdbfe;background:#fff;color:#1d4ed8;border-radius:12px;padding:10px 14px;font-weight:800}.links a.primary{background:var(--primary);color:#fff;border-color:var(--primary)}footer{text-align:center;color:#94a3b8;font-size:12px;margin-top:28px}
+    @media(min-width:768px){main{padding-top:54px}.card{padding:28px}.hero h1{font-size:34px}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="mark">成</div>
+    <h1>班級成績管理系統</h1>
+    <p>教師成績管理、學習表現分析與家長／學生查詢工具</p>
+  </header>
+
+  <section class="card">
+    <h2>系統用途</h2>
+    <p>本系統是為班級與教學現場所設計的成績管理工具，協助教師整理學生名單、考試資料與成績，並透過統計與趨勢資訊掌握學生近期學習狀況。</p>
+    <p>系統也提供獨立的家長／學生查詢介面，讓授權使用者依教師目前公開的班級資料查詢自己的成績紀錄與分科表現。</p>
+  </section>
+
+  <section class="card">
+    <h2>主要功能</h2>
+    <ul>
+      <li>教師使用 Google 帳號登入。</li>
+      <li>管理班級、學生、考試與成績資料。</li>
+      <li>提供個別學生與班級整體的近期表現分析。</li>
+      <li>家長／學生可透過教師提供的查詢網址，以學號與驗證資料查詢自己的成績。</li>
+      <li>以手機直向操作為主要使用情境，同時支援桌機瀏覽。</li>
+    </ul>
+  </section>
+
+  <section class="card note">
+    <h2>Google 資料的使用方式</h2>
+    <p>教師授權 Google Drive 與 Google Sheets 權限後，系統會使用教師自己的 Google 雲端空間建立、讀取及更新本系統所管理的班級資料。教師的完整班級成績不會集中複製到本網站的中央資料庫。</p>
+    <p>為了讓家長／學生在教師端未開啟時仍能查詢教師指定公開的班級，本系統後端會保存教師授權所需的 Google OAuth 離線憑證，以及查詢網址與目前公開班級所需的必要設定資訊。詳細說明請參閱隱私權政策。</p>
+  </section>
+
+  <div class="links">
+    <a class="primary" href="/">前往系統</a>
+    <a href="/privacy/">隱私權政策</a>
+  </div>
+
+  <footer>班級成績管理系統</footer>
+</main>
+</body>
+</html>
